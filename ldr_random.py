@@ -10,7 +10,7 @@ while True:
 
     print(f"Nilai LDR: {nilai}", end=" -> ")
 
-    if nilai < 1000:
+    if nilai < 500:
         print("GELAP")
     elif nilai < 3000:
         print("REDUP")
