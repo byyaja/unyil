@@ -1,7 +1,7 @@
 // ESP32 - Baca Sensor LDR
 // Rangkaian: 3.3V -> LDR -> GPIO34 -> Resistor 10k -> GND
 
-const int LDR_PIN = 34;  // Pin LDR
+const int LDR_PIN = 2;  // Pin LDR
 
 void setup() {
   Serial.begin(115200);
