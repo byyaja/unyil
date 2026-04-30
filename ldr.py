@@ -3,7 +3,6 @@ import time
 
 # Mendefinisikan pin yang digunakan pada ESP32
 PIN_ANALOG = 34
-PIN_DIGITAL = 4
 
 # Setup ADC
 adc = ADC(Pin(PIN_ANALOG))
@@ -21,8 +20,7 @@ while True:
     # Menampilkan hasil ke Serial Monitor
     print(f"Nilai cahaya: {nilai_cahaya}", end=" | Status: ")
 
-    # Umumnya DO bernilai 1 (HIGH) jika gelap, dan 0 (LOW) jika terang.
-    # Ini bisa berbeda tergantung modul, silakan disesuaikan jika terbalik.
+
     if nilai_cahaya < 500:
         print("Gelap")
     elif nilai_cahaya < 1500:
