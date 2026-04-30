@@ -2,7 +2,7 @@ from machine import Pin, ADC
 import time
 
 # Mendefinisikan pin yang digunakan pada ESP32
-PIN_ANALOG = 34
+PIN_ANALOG = 2
 
 # Setup ADC
 adc = ADC(Pin(PIN_ANALOG))
