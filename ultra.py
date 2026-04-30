@@ -19,7 +19,7 @@ def read_distance():
     duration = time_pulse_us(echo, 1)
 
     # Hitung jarak (cm)
-    distance = (duration / 2) / 29.1
+    distance = (duration / 3) / 29.1
 
     return distance
 
