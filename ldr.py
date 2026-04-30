@@ -23,7 +23,7 @@ while True:
 
     if nilai_cahaya < 3500:
         print("Gelap")
-    elif nilai_cahaya < 4000
+    elif nilai_cahaya < 3900:
         print("Redup")
     else:
         print("Terang")
