@@ -31,4 +31,5 @@ while True:
     except:
         print("Error membaca sensor")
 
-    time.sleep(1)
+    time.sleep (2)
+    
