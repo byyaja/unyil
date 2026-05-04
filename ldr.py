@@ -21,10 +21,10 @@ while True:
     print(f"Nilai cahaya: {nilai_cahaya}", end=" | Status: ")
 
 
-    if nilai_cahaya < 180:
+    if nilai_cahaya < 2000:
         print("Gelap")
     else:
         print("Terang")
 
     # Jeda setengah detik sebelum membaca ulang
-    time.sleep(10)
+    time.sleep(1)
