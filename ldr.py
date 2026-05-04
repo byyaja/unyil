@@ -21,7 +21,7 @@ while True:
     print(f"Nilai cahaya: {nilai_cahaya}", end=" | Status: ")
 
 
-    if nilai_cahaya < 2000:
+    if nilai_cahaya < 2050:
         print("Gelap")
     else:
         print("Terang")
