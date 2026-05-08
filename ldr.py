@@ -27,4 +27,4 @@ while True:
         print("Terang")
 
     # Jeda setengah detik sebelum membaca ulang
-    time.sleep(1)
+    time.sleep(2)
