@@ -11,7 +11,7 @@
 | 📍 Lokasi | Gerbang Depan |
 | 🕐 Waktu | Manual Test |
 | 💡 Nilai LDR | 2500 |
-| 📁 Total Log | 1 data |
+| 📁 Total Log | 2 data |
 
 ## 📂 File Log
 
