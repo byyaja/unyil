@@ -1,0 +1,92 @@
+name: 📡 Sensor LDR Log
+
+on:
+  repository_dispatch:
+    types: [sensor-alert]
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'Status sensor'
+        default: 'TEST'
+      ldr_value:
+        description: 'Nilai LDR'
+        default: '2500'
+
+jobs:
+  log-sensor-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📝 Tulis Data ke Log
+        run: |
+          STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
+          LOCATION="${{ github.event.client_payload.location || 'Gerbang Depan' }}"
+          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
+          LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
+
+          mkdir -p logs
+
+          if [ ! -f logs/sensor_log.csv ]; then
+            echo "Tanggal_Waktu,Status,Lokasi,Nilai_LDR" > logs/sensor_log.csv
+          fi
+
+          echo "${TIMESTAMP},${STATUS},${LOCATION},${LDR_VALUE}" >> logs/sensor_log.csv
+
+          echo "========================================"
+          echo "  📡 Data Sensor Diterima"
+          echo "========================================"
+          echo "  Status   : ${STATUS}"
+          echo "  Lokasi   : ${LOCATION}"
+          echo "  Waktu    : ${TIMESTAMP}"
+          echo "  Nilai LDR: ${LDR_VALUE}"
+          echo "========================================"
+
+      - name: 📊 Update README
+        run: |
+          STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
+          LOCATION="${{ github.event.client_payload.location || 'Gerbang Depan' }}"
+          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
+          LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
+
+          TOTAL_LOG=$(tail -n +2 logs/sensor_log.csv | wc -l)
+
+          cat > README.md << EOF
+          # 📡 ESP32 Sensor LDR - Log Anomali
+
+          > Sistem deteksi anomali cahaya menggunakan ESP32 + Sensor LDR
+          > Notifikasi via WhatsApp (Fonnte) | Data tersimpan di GitHub
+
+          ## 📊 Status Terakhir
+
+          | Item | Detail |
+          |------|--------|
+          | 🔔 Status | **${STATUS}** |
+          | 📍 Lokasi | ${LOCATION} |
+          | 🕐 Waktu | ${TIMESTAMP} |
+          | 💡 Nilai LDR | ${LDR_VALUE} |
+          | 📁 Total Log | ${TOTAL_LOG} data |
+
+          ## 📂 File Log
+
+          Data lengkap tersimpan di [\`logs/sensor_log.csv\`](logs/sensor_log.csv)
+
+          ---
+          *Diperbarui otomatis oleh GitHub Actions pada ${TIMESTAMP}*
+          EOF
+
+      - name: 💾 Commit & Push Log
+        run: |
+          git config user.name "ESP32 Sensor Bot"
+          git config user.email "sensor-bot@automated.com"
+          git add logs/sensor_log.csv README.md
+          git commit -m "📡 [${STATUS}] LDR: ${LDR_VALUE} | ${TIMESTAMP}"
+          git push
+        env:
+          STATUS: ${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}
+          LDR_VALUE: ${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}
+          TIMESTAMP: ${{ github.event.client_payload.timestamp || 'Manual Test' }}
