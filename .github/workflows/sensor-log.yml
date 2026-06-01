@@ -46,7 +46,7 @@ jobs:
           echo "  Nilai LDR: ${LDR_VALUE}"
           echo "========================================"
 
-      - name: 📱 Kirim Notifikasi Telegram
+- name: 📱 Kirim Notifikasi Telegram
         run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
@@ -54,23 +54,23 @@ jobs:
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
 
           if [ "$STATUS" == "STARTUP" ]; then
-            MESSAGE="🟢 *SISTEM AKTIF*
+            MESSAGE="🟢 <b>SISTEM AKTIF</b>
           ━━━━━━━━━━━━━━━━━━━━
           📡 ESP32 Sensor LDR menyala
           📍 Lokasi: ${LOCATION}
           🕐 Waktu: ${TIMESTAMP}
           💡 Nilai LDR: ${LDR_VALUE}
           ━━━━━━━━━━━━━━━━━━━━
-          ✅ Siap mendeteksi anomali cahaya"
+          ✅ Siap mendeteksi cahaya ruangan"
           else
-            MESSAGE="🚨 *ANOMALI CAHAYA TERDETEKSI\!*
+            MESSAGE="🚨 <b>!</b>RUANGAN GELAP
           ━━━━━━━━━━━━━━━━━━━━
           📡 Status: ${STATUS}
           📍 Lokasi: ${LOCATION}
           🕐 Waktu: ${TIMESTAMP}
           💡 Nilai LDR: ${LDR_VALUE}
           ━━━━━━━━━━━━━━━━━━━━
-          ⚠️ Segera cek lokasi sensor\!"
+          ⚠️ Segera cek lokasi sensor!"
           fi
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
@@ -78,10 +78,10 @@ jobs:
             -d "{
               \"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\",
               \"text\": \"${MESSAGE}\",
-              \"parse_mode\": \"MarkdownV2\"
+              \"parse_mode\": \"HTML\"
             }"
 
-          echo "✅ Telegram terkirim!"
+          echo "✅ Perintah curl selesai dijalankan!"
 
       - name: 📊 Update README
         run: |
