@@ -46,7 +46,7 @@ jobs:
           echo "  Nilai LDR: ${LDR_VALUE}"
           echo "========================================"
 
-- name: 📱 Kirim Notifikasi Telegram
+      - name: 📱 Kirim Notifikasi Telegram
         run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
