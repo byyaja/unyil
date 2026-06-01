@@ -9,9 +9,9 @@
 |------|--------|
 | 🔔 Status | **TERDETEKSI** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | 2026-06-02 05:26:50 WIB |
-| 💡 Nilai LDR | 2002 |
-| 📁 Total Log | 18 data |
+| 🕐 Waktu | 2026-06-02 05:27:05 WIB |
+| 💡 Nilai LDR | 2043 |
+| 📁 Total Log | 19 data |
 
 ## 📂 File Log
 
@@ -25,4 +25,4 @@ Data lengkap di [`logs/sensor_log.csv`](logs/sensor_log.csv)
 ```
 
 ---
-*Diperbarui otomatis pada 2026-06-02 05:26:50 WIB*
+*Diperbarui otomatis pada 2026-06-02 05:27:05 WIB*
