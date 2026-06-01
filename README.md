@@ -1,21 +1,28 @@
-# 📡 ESP32 Sensor LDR - Log Anomali
+# 📡 ESP32 Sensor LDR - Log Anomali Cahaya
 
 > Sistem deteksi anomali cahaya menggunakan ESP32 + Sensor LDR
-> Notifikasi via WhatsApp (Fonnte) | Data tersimpan di GitHub
+> Notifikasi via Telegram | Data tersimpan di GitHub
 
 ## 📊 Status Terakhir
 
 | Item | Detail |
 |------|--------|
 | 🔔 Status | **TEST** |
-| 📍 Lokasi | Gerbang Depan |
+| 📍 Lokasi | Lampu kamar |
 | 🕐 Waktu | Manual Test |
 | 💡 Nilai LDR | 2500 |
-| 📁 Total Log | 2 data |
+| 📁 Total Log | 3 data |
 
 ## 📂 File Log
 
-Data lengkap tersimpan di [`logs/sensor_log.csv`](logs/sensor_log.csv)
+Data lengkap di [`logs/sensor_log.csv`](logs/sensor_log.csv)
+
+## 🏗️ Arsitektur
+
+```
+[Sensor LDR] → [ESP32] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
+                                                         → [Log CSV]
+```
 
 ---
-*Diperbarui otomatis oleh GitHub Actions pada Manual Test*
+*Diperbarui otomatis pada Manual Test*
