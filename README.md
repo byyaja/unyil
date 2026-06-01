@@ -7,11 +7,11 @@
 
 | Item | Detail |
 |------|--------|
-| 🔔 Status | **TEST** |
+| 🔔 Status | **TERDETEKSI** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | Manual Test |
-| 💡 Nilai LDR | 2500 |
-| 📁 Total Log | 8 data |
+| 🕐 Waktu | 2026-06-02 05:18:58 WIB |
+| 💡 Nilai LDR | 4095 |
+| 📁 Total Log | 9 data |
 
 ## 📂 File Log
 
@@ -25,4 +25,4 @@ Data lengkap di [`logs/sensor_log.csv`](logs/sensor_log.csv)
 ```
 
 ---
-*Diperbarui otomatis pada Manual Test*
+*Diperbarui otomatis pada 2026-06-02 05:18:58 WIB*
