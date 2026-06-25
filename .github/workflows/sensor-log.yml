@@ -1,28 +1,14 @@
 - name: 📱 Kirim Notifikasi Telegram
-        run: |
+          run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
 
           if [ "$STATUS" == "STARTUP" ]; then
-            MESSAGE="🟢 <b>SISTEM AKTIF</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          📡 ESP32 Sensor LDR menyala
-          📍 Lokasi: ${LOCATION}
-          🕐 Waktu: ${TIMESTAMP}
-          💡 Nilai LDR: ${LDR_VALUE}
-          ━━━━━━━━━━━━━━━━━━━━
-          ✅ Siap mendeteksi cahaya ruangan"
+            MESSAGE="🟢 <b>SISTEM AKTIF</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 ESP32 Sensor LDR menyala\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n✅ Siap mendeteksi cahaya ruangan"
           else
-            MESSAGE="🚨 <b>RUANGAN GELAP</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          📡 Status: ${STATUS}
-          📍 Lokasi: ${LOCATION}
-          🕐 Waktu: ${TIMESTAMP}
-          💡 Nilai LDR: ${LDR_VALUE}
-          ━━━━━━━━━━━━━━━━━━━━
-          ⚠️ Segera cek lokasi sensor!"
+            MESSAGE="🚨 <b>RUANGAN GELAP</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 Status: ${STATUS}\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n⚠️ Segera cek lokasi sensor!"
           fi
 
           # Membuat JSON secara aman menggunakan jq
@@ -32,10 +18,10 @@
             --arg parse_mode "HTML" \
             '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
 
-          # Mengirim request tanpa disembunyikan (-s) agar output/error terlihat di log
-          echo "Mengirim notifikasi ke Telegram..."
+          echo "Mengirim payload JSON berikut:"
+          echo "$JSON_PAYLOAD"
+
+          echo "Menghubungi API Telegram..."
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$JSON_PAYLOAD"
-            
-          echo -e "\n✅ Proses curl selesai dijalankan!"
