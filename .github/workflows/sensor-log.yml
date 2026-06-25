@@ -1,5 +1,26 @@
-name: 📱 Kirim Notifikasi Telegram
-run: |
+name: Log Sensor ESP32
+
+on:
+  repository_dispatch:
+    types: [sensor_update]
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'Status (STARTUP/GELAP dll)'
+        required: false
+        default: 'TEST'
+      ldr_value:
+        description: 'Nilai LDR'
+        required: false
+        default: '0'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📱 Kirim Notifikasi Telegram
+        run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
@@ -17,9 +38,6 @@ run: |
             --arg text "$MESSAGE" \
             --arg parse_mode "HTML" \
             '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
-
-          echo "Mengirim payload JSON berikut:"
-          echo "$JSON_PAYLOAD"
 
           echo "Menghubungi API Telegram..."
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
