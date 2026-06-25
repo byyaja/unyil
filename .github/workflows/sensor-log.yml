@@ -1,5 +1,5 @@
 - name: 📱 Kirim Notifikasi Telegram
-          run: |
+run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
