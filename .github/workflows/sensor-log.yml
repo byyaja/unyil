@@ -1,52 +1,4 @@
-name: 📡 Sensor LDR → Telegram
-
-on:
-  repository_dispatch:
-    types: [sensor-alert]
-  workflow_dispatch:
-    inputs:
-      status:
-        description: 'Status sensor'
-        default: 'TEST'
-      ldr_value:
-        description: 'Nilai LDR'
-        default: '2500'
-
-jobs:
-  log-and-notify:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 📝 Tulis Data ke Log CSV
-        run: |
-          STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
-          LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
-          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
-          LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
-
-          mkdir -p logs
-
-          if [ ! -f logs/sensor_log.csv ]; then
-            echo "Tanggal_Waktu,Status,Lokasi,Nilai_LDR" > logs/sensor_log.csv
-          fi
-
-          echo "${TIMESTAMP},${STATUS},${LOCATION},${LDR_VALUE}" >> logs/sensor_log.csv
-
-          echo "========================================"
-          echo "  📡 Data Sensor Diterima"
-          echo "========================================"
-          echo "  Status   : ${STATUS}"
-          echo "  Lokasi   : ${LOCATION}"
-          echo "  Waktu    : ${TIMESTAMP}"
-          echo "  Nilai LDR: ${LDR_VALUE}"
-          echo "========================================"
-
-      - name: 📱 Kirim Notifikasi Telegram
+- name: 📱 Kirim Notifikasi Telegram
         run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
@@ -54,23 +6,9 @@ jobs:
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
 
           if [ "$STATUS" == "STARTUP" ]; then
-            MESSAGE="🟢 <b>SISTEM AKTIF</b>
-          ━━━━━━━━━━━━━━━━━━━━
-          📡 ESP32 Sensor LDR menyala
-          📍 Lokasi: ${LOCATION}
-          🕐 Waktu: ${TIMESTAMP}
-          💡 Nilai LDR: ${LDR_VALUE}
-          ━━━━━━━━━━━━━━━━━━━━
-          ✅ Siap mendeteksi cahaya ruangan"
+            MESSAGE="🟢 <b>SISTEM AKTIF</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 ESP32 Sensor LDR menyala\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n✅ Siap mendeteksi cahaya ruangan"
           else
-            MESSAGE="🚨 <b>!</b>RUANGAN GELAP
-          ━━━━━━━━━━━━━━━━━━━━
-          📡 Status: ${STATUS}
-          📍 Lokasi: ${LOCATION}
-          🕐 Waktu: ${TIMESTAMP}
-          💡 Nilai LDR: ${LDR_VALUE}
-          ━━━━━━━━━━━━━━━━━━━━
-          ⚠️ Segera cek lokasi sensor!"
+            MESSAGE="🚨 <b>RUANGAN GELAP</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 Status: ${STATUS}\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n⚠️ Segera cek lokasi sensor!"
           fi
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
@@ -82,54 +20,3 @@ jobs:
             }"
 
           echo "✅ Perintah curl selesai dijalankan!"
-
-      - name: 📊 Update README
-        run: |
-          STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
-          LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
-          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
-          LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
-          TOTAL_LOG=$(tail -n +2 logs/sensor_log.csv | wc -l)
-
-          cat > README.md << EOF
-          # 📡 ESP32 Sensor LDR - Log Anomali Cahaya
-
-          > Sistem deteksi anomali cahaya menggunakan ESP32 + Sensor LDR
-          > Notifikasi via Telegram | Data tersimpan di GitHub
-
-          ## 📊 Status Terakhir
-
-          | Item | Detail |
-          |------|--------|
-          | 🔔 Status | **${STATUS}** |
-          | 📍 Lokasi | ${LOCATION} |
-          | 🕐 Waktu | ${TIMESTAMP} |
-          | 💡 Nilai LDR | ${LDR_VALUE} |
-          | 📁 Total Log | ${TOTAL_LOG} data |
-
-          ## 📂 File Log
-
-          Data lengkap di [\`logs/sensor_log.csv\`](logs/sensor_log.csv)
-
-          ## 🏗️ Arsitektur
-
-          \`\`\`
-          [Sensor LDR] → [ESP32] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
-                                                                   → [Log CSV]
-          \`\`\`
-
-          ---
-          *Diperbarui otomatis pada ${TIMESTAMP}*
-          EOF
-
-      - name: 💾 Commit & Push
-        run: |
-          git config user.name "ESP32 Sensor Bot"
-          git config user.email "sensor-bot@automated.com"
-          git add logs/sensor_log.csv README.md
-          git commit -m "📡 [${STATUS}] LDR: ${LDR_VALUE} | ${TIMESTAMP}"
-          git push
-        env:
-          STATUS: ${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}
-          LDR_VALUE: ${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}
-          TIMESTAMP: ${{ github.event.client_payload.timestamp || 'Manual Test' }}
