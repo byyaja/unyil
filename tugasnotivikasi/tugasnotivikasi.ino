@@ -15,7 +15,7 @@ const char* WIFI_PASSWORD   = "11111111"; //Password WIfi
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG  = true;
-const char* GITHUB_TOKEN    = "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"; // Token Github
+const char* GITHUB_TOKEN    = "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"; // Token Github
 const char* GITHUB_OWNER    = "byyaja"; // Username Github
 const char* GITHUB_REPO     = "unyil"; // Repository github
 
