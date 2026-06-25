@@ -6,17 +6,36 @@
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
 
           if [ "$STATUS" == "STARTUP" ]; then
-            MESSAGE="🟢 <b>SISTEM AKTIF</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 ESP32 Sensor LDR menyala\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n✅ Siap mendeteksi cahaya ruangan"
+            MESSAGE="🟢 <b>SISTEM AKTIF</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          📡 ESP32 Sensor LDR menyala
+          📍 Lokasi: ${LOCATION}
+          🕐 Waktu: ${TIMESTAMP}
+          💡 Nilai LDR: ${LDR_VALUE}
+          ━━━━━━━━━━━━━━━━━━━━
+          ✅ Siap mendeteksi cahaya ruangan"
           else
-            MESSAGE="🚨 <b>RUANGAN GELAP</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 Status: ${STATUS}\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n⚠️ Segera cek lokasi sensor!"
+            MESSAGE="🚨 <b>RUANGAN GELAP</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          📡 Status: ${STATUS}
+          📍 Lokasi: ${LOCATION}
+          🕐 Waktu: ${TIMESTAMP}
+          💡 Nilai LDR: ${LDR_VALUE}
+          ━━━━━━━━━━━━━━━━━━━━
+          ⚠️ Segera cek lokasi sensor!"
           fi
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\",
-              \"text\": \"${MESSAGE}\",
-              \"parse_mode\": \"HTML\"
-            }"
+          # Membuat JSON secara aman menggunakan jq
+          JSON_PAYLOAD=$(jq -n \
+            --arg chat_id "${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --arg text "$MESSAGE" \
+            --arg parse_mode "HTML" \
+            '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
 
-          echo "✅ Perintah curl selesai dijalankan!"
+          # Mengirim request tanpa disembunyikan (-s) agar output/error terlihat di log
+          echo "Mengirim notifikasi ke Telegram..."
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD"
+            
+          echo -e "\n✅ Proses curl selesai dijalankan!"
