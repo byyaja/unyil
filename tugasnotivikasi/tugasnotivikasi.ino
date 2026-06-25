@@ -10,12 +10,12 @@
 #include <time.h>
 
 // ============ KONFIGURASI WiFi ============
-const char* WIFI_SSID      = "py"; //SSID WiFi
-const char* WIFI_PASSWORD   = "11111111"; //Password WIfi
+const char* WIFI_SSID      = "Byy"; //SSID WiFi
+const char* WIFI_PASSWORD   = "buyyyyyy"; //Password WIfi
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG  = true;
-const char* GITHUB_TOKEN    = "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"; // Token Github
+const char* GITHUB_TOKEN    = "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"; // Token Github
 const char* GITHUB_OWNER    = "byyaja"; // Username Github
 const char* GITHUB_REPO     = "unyil"; // Repository github
 
@@ -162,24 +162,24 @@ bool sendGitHubAlert(String status, int nilaiLDR) {
 
   http.begin(client, url);
 
-  // Headers
+   // Headers
   http.addHeader("Authorization", String("token ") + GITHUB_TOKEN);
   http.addHeader("Accept", "application/vnd.github.v3+json");
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("User-Agent", "ESP32-Device"); // Tambahan: User-Agent wajib untuk GitHub API
 
   // Dapatkan waktu sekarang
   String timestamp = getFormattedTime();
 
-  // Body JSON
+  // Body JSON (event_type diubah menjadi "sensor_update")
   String payload = "{";
-  payload += "\"event_type\":\"sensor-alert\",";
+  payload += "\"event_type\":\"sensor_update\","; // Diubah dari "sensor-alert" ke "sensor_update"
   payload += "\"client_payload\":{";
   payload += "\"status\":\"" + status + "\",";
   payload += "\"location\":\"" + String(SENSOR_LOCATION) + "\",";
   payload += "\"timestamp\":\"" + timestamp + "\",";
   payload += "\"ldr_value\":\"" + String(nilaiLDR) + "\"";
   payload += "}}";
-
   Serial.println("📦 Payload: " + payload);
 
   // Kirim POST request
