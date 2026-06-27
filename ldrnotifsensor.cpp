@@ -5,15 +5,15 @@
 
 // ============ KONFIGURASI WiFi ============
 const char* WIFI_SSID     = "Home";
-const char* WIFI_PASSWORD  = "yangsemalamjua";
+const char* WIFI_PASSWORD  = "";
 
 // ============ KONFIGURASI TELEGRAM ============
-const char* TELEGRAM_BOT_TOKEN = "8981733792:AAETc1u-Fq8MBsVDSupV1LWt67O4rk7ZNgg";
-const char* TELEGRAM_CHAT_ID   = "7710360988";
+const char* TELEGRAM_BOT_TOKEN = "";
+const char* TELEGRAM_CHAT_ID   = "";
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG = true;
-const char* GITHUB_TOKEN   = "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";
+const char* GITHUB_TOKEN   = "";
 const char* GITHUB_OWNER   = "byyaja";
 const char* GITHUB_REPO    = "unyil";
 
