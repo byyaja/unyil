@@ -6,31 +6,135 @@ on:
   workflow_dispatch:
     inputs:
       status:
-        description: 'Status (STARTUP/GELAP dll)'
+        description: 'Status (AMAN/BAHAYA)'
         required: false
-        default: 'TEST'
+        default: 'AMAN'
+      kondisi:
+        description: 'Kondisi cahaya'
+        required: false
+        default: 'Cahaya terang'
       ldr_value:
         description: 'Nilai LDR'
         required: false
         default: '0'
 
+permissions:
+  contents: write
+
 jobs:
-  notify:
+  log-and-notify:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: 📱 Kirim Notifikasi Telegram
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📝 Simpan Data ke CSV
         run: |
           STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
+          KONDISI="${{ github.event.client_payload.kondisi || github.event.inputs.kondisi || 'Unknown' }}"
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
 
-          if [ "$STATUS" == "STARTUP" ]; then
-            MESSAGE="🟢 <b>SISTEM AKTIF</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 ESP32 Sensor LDR menyala\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n✅ Siap mendeteksi cahaya ruangan"
-          else
-            MESSAGE="🚨 <b>RUANGAN GELAP</b>\n━━━━━━━━━━━━━━━━━━━━\n📡 Status: ${STATUS}\n📍 Lokasi: ${LOCATION}\n🕐 Waktu: ${TIMESTAMP}\n💡 Nilai LDR: ${LDR_VALUE}\n━━━━━━━━━━━━━━━━━━━━\n⚠️ Segera cek lokasi sensor!"
+          # Pastikan direktori logs ada
+          mkdir -p logs
+
+          # Buat header CSV jika file belum ada
+          if [ ! -f logs/sensor_log.csv ]; then
+            echo "Tanggal_Waktu,Status,Kondisi,Lokasi,Nilai_LDR" > logs/sensor_log.csv
           fi
+
+          # Tambahkan data baru ke CSV
+          echo "${TIMESTAMP},${STATUS},${KONDISI},${LOCATION},${LDR_VALUE}" >> logs/sensor_log.csv
+
+          echo "✅ Data berhasil ditambahkan ke CSV"
+          echo "📊 Status: ${STATUS} | Kondisi: ${KONDISI} | LDR: ${LDR_VALUE}"
+
+      - name: 📊 Update README
+        run: |
+          STATUS="${{ github.event.client_payload.status || github.event.inputs.status || 'TEST' }}"
+          KONDISI="${{ github.event.client_payload.kondisi || github.event.inputs.kondisi || 'Unknown' }}"
+          LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
+          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
+          LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
+          TOTAL_LOG=$(wc -l < logs/sensor_log.csv)
+          TOTAL_LOG=$((TOTAL_LOG - 1))  # Kurangi header
+
+          cat > README.md << EOF
+          # 📡 ESP32 Sensor LDR - Monitor Cahaya
+
+          > Sistem monitoring intensitas cahaya menggunakan ESP32 + Sensor LDR
+          > Notifikasi via Telegram | Data tersimpan di GitHub | Dashboard Interaktif
+
+          ## 📊 Status Terakhir
+
+          | Item | Detail |
+          |------|--------|
+          | 🔔 Status | **${STATUS}** |
+          | 💡 Kondisi | **${KONDISI}** |
+          | 📍 Lokasi | ${LOCATION} |
+          | 🕐 Waktu | ${TIMESTAMP} |
+          | 📈 Nilai LDR | ${LDR_VALUE} |
+          | 📁 Total Log | ${TOTAL_LOG} data |
+
+          ## 📂 File Log
+
+          Data lengkap di [\`logs/sensor_log.csv\`](logs/sensor_log.csv)
+
+          ## 🌐 Dashboard
+
+          Buka [\`index.html\`](index.html) untuk melihat dashboard interaktif
+
+          ## 🏗️ Arsitektur
+
+          \`\`\`
+          [Sensor LDR] → [ESP32] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
+                                                                   → [Log CSV]
+                                                                   → [Dashboard]
+          \`\`\`
+
+          ## 📋 Parameter Sensor (Jurnal LDR)
+
+          | No | Kondisi Cahaya | Nilai ADC | Status | Keterangan |
+          |----|----------------|-----------|--------|------------|
+          | 1 | Gelap total | ≥ 3763 | 🔴 BAHAYA | Intensitas cahaya sangat rendah |
+          | 2 | Remang-remang | 2400 - 3762 | 🟢 AMAN | Cahaya redup/samar |
+          | 3 | Cahaya terang | 1040 - 2399 | 🟢 AMAN | Cahaya cukup terang |
+          | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
+
+          ---
+          *Diperbarui otomatis pada ${TIMESTAMP}*
+          EOF
+
+      - name: 💾 Commit & Push Data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/sensor_log.csv README.md
+          git diff --quiet --cached && echo "Tidak ada perubahan" && exit 0
+          git commit -m "📊 Log sensor: ${{ github.event.client_payload.kondisi || 'update' }} (LDR: ${{ github.event.client_payload.ldr_value || '0' }})"
+          git push
+
+      - name: 📱 Kirim Notifikasi Telegram (Hanya BAHAYA)
+        if: github.event.client_payload.trigger_telegram == 'true'
+        run: |
+          STATUS="${{ github.event.client_payload.status }}"
+          KONDISI="${{ github.event.client_payload.kondisi }}"
+          LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
+          TIMESTAMP="${{ github.event.client_payload.timestamp || 'Unknown' }}"
+          LDR_VALUE="${{ github.event.client_payload.ldr_value || '0' }}"
+
+          MESSAGE="🚨 <b>BAHAYA - GELAP TOTAL!</b>
+          ━━━━━━━━━━━━━━━━━━━━
+          📡 Status: ${STATUS}
+          💡 Kondisi: ${KONDISI}
+          📍 Lokasi: ${LOCATION}
+          🕐 Waktu: ${TIMESTAMP}
+          📈 Nilai LDR: ${LDR_VALUE}
+          ━━━━━━━━━━━━━━━━━━━━
+          ⚠️ Intensitas cahaya sangat rendah!
+          Segera cek lokasi sensor!"
 
           # Membuat JSON secara aman menggunakan jq
           JSON_PAYLOAD=$(jq -n \
@@ -39,7 +143,9 @@ jobs:
             --arg parse_mode "HTML" \
             '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
 
-          echo "Menghubungi API Telegram..."
+          echo "📱 Mengirim notifikasi Telegram (BAHAYA)..."
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$JSON_PAYLOAD"
+
+          echo "✅ Notifikasi Telegram terkirim!"
