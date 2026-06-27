@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard monitoring sensor LDR ESP32 - Pantau intensitas cahaya secara real-time dengan grafik tren 12 jam">
+  <title>✨ Dashboard Sensor LDR - Monitor Cahaya</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ==============================
+       CSS VARIABLES & RESET
+    ============================== */
+    :root {
+      --pink-50: #fdf2f8;
+      --pink-100: #fce7f3;
+      --pink-200: #fbcfe8;
+      --pink-300: #f9a8d4;
+      --pink-400: #f472b6;
+      --pink-500: #ec4899;
+      --pink-600: #db2777;
+
+      --lavender-50: #faf5ff;
+      --lavender-100: #f3e8ff;
+      --lavender-200: #e9d5ff;
+      --lavender-300: #d8b4fe;
+      --lavender-400: #c084fc;
+
+      --peach-50: #fff7ed;
+      --peach-100: #ffedd5;
+      --peach-200: #fed7aa;
+      --peach-300: #fdba74;
+
+      --mint-50: #f0fdf4;
+      --mint-100: #dcfce7;
+      --mint-200: #bbf7d0;
+      --mint-300: #86efac;
+
+      --rose-50: #fff1f2;
+      --rose-100: #ffe4e6;
+      --rose-200: #fecdd3;
+
+      --danger-bg: #fef2f2;
+      --danger-text: #dc2626;
+      --danger-border: #fca5a5;
+
+      --safe-bg: #f0fdf4;
+      --safe-text: #16a34a;
+      --safe-border: #86efac;
+
+      --card-bg: rgba(255, 255, 255, 0.75);
+      --card-border: rgba(255, 255, 255, 0.6);
+      --card-shadow: 0 8px 32px rgba(236, 72, 153, 0.08);
+      --card-radius: 20px;
+
+      --text-primary: #4a1942;
+      --text-secondary: #7c3a6b;
+      --text-muted: #a06090;
+
+      --gradient-main: linear-gradient(135deg, var(--pink-50), var(--lavender-50), var(--peach-50));
+      --gradient-header: linear-gradient(135deg, var(--pink-400), var(--lavender-400), var(--peach-300));
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: var(--gradient-main);
+      min-height: 100vh;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* ==============================
+       ANIMATED BACKGROUND
+    ============================== */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(circle at 20% 80%, var(--pink-100) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, var(--lavender-100) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, var(--peach-100) 0%, transparent 50%),
+        radial-gradient(circle at 70% 70%, var(--mint-100) 0%, transparent 50%);
+      animation: bgFloat 20s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes bgFloat {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(2%, -2%) rotate(1deg); }
+      50% { transform: translate(-1%, 3%) rotate(-1deg); }
+      75% { transform: translate(3%, 1%) rotate(0.5deg); }
+    }
+
+    /* ==============================
+       HEADER
+    ============================== */
+    .header {
+      background: var(--gradient-header);
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg,
+        var(--pink-200),
+        var(--lavender-200),
+        var(--peach-200),
+        var(--mint-200),
+        var(--pink-200)
+      );
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 0% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .header h1 {
+      color: white;
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      letter-spacing: -0.02em;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.95rem;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* ==============================
+       CONTAINER
+    ============================== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* ==============================
+       CARDS (Glassmorphism)
+    ============================== */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(236, 72, 153, 0.12);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title .icon {
+      font-size: 1.3rem;
+    }
+
+    /* ==============================
+       GRID LAYOUTS
+    ============================== */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ==============================
+       STATUS PANEL
+    ============================== */
+    .status-panel {
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .status-icon {
+      font-size: 4rem;
+      margin-bottom: 12px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .status-label {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .status-kondisi {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 20px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-danger {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border: 2px solid var(--danger-border);
+    }
+
+    .badge-safe {
+      background: var(--safe-bg);
+      color: var(--safe-text);
+      border: 2px solid var(--safe-border);
+    }
+
+    .status-meta {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .status-meta span {
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* ==============================
+       STAT CARDS
+    ============================== */
+    .stat-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      transition: transform 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .stat-card.pink::before { background: var(--gradient-header); }
+    .stat-card.lavender::before { background: linear-gradient(90deg, var(--lavender-300), var(--lavender-400)); }
+    .stat-card.peach::before { background: linear-gradient(90deg, var(--peach-200), var(--peach-300)); }
+    .stat-card.mint::before { background: linear-gradient(90deg, var(--mint-200), var(--mint-300)); }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .stat-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* ==============================
+       CHART
+    ============================== */
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+    }
+
+    /* ==============================
+       PARAMETER TABLE
+    ============================== */
+    .param-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--pink-200);
+    }
+
+    .param-table thead th {
+      background: linear-gradient(135deg, var(--pink-200), var(--lavender-200));
+      color: var(--text-primary);
+      font-weight: 700;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .param-table tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--pink-100);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .param-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .param-table tbody tr:hover {
+      background: var(--pink-50);
+    }
+
+    .param-table .badge-sm {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-sm.danger {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .badge-sm.safe {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+
+    /* ==============================
+       HISTORY TABLE
+    ============================== */
+    .history-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid var(--pink-200);
+    }
+
+    .history-wrapper::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .history-wrapper::-webkit-scrollbar-track {
+      background: var(--pink-50);
+    }
+
+    .history-wrapper::-webkit-scrollbar-thumb {
+      background: var(--pink-300);
+      border-radius: 10px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-table thead th {
+      background: linear-gradient(135deg, var(--pink-200), var(--lavender-200));
+      color: var(--text-primary);
+      font-weight: 700;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 0.82rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .history-table tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--pink-100);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    .history-table tbody tr:hover {
+      background: var(--pink-50);
+    }
+
+    .history-table .row-danger {
+      background: #fff5f5;
+    }
+
+    .history-table .row-danger:hover {
+      background: #fff1f1;
+    }
+
+    /* ==============================
+       SETTINGS PANEL
+    ============================== */
+    .settings-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--pink-200);
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    .settings-toggle:hover {
+      background: var(--pink-100);
+      border-color: var(--pink-300);
+    }
+
+    .settings-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .settings-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--pink-200);
+      border-radius: 12px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      background: white;
+      transition: border-color 0.3s ease;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: var(--pink-400);
+    }
+
+    .form-group input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: var(--gradient-header);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(236, 72, 153, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--pink-100);
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover {
+      background: var(--pink-200);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    /* ==============================
+       LOADING & STATUS MESSAGES
+    ============================== */
+    .loading {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+
+    .loading .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--pink-200);
+      border-top-color: var(--pink-400);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .message-box {
+      text-align: center;
+      padding: 32px 24px;
+      border-radius: 16px;
+      font-weight: 600;
+    }
+
+    .message-info {
+      background: var(--lavender-50);
+      color: var(--lavender-400);
+      border: 1px solid var(--lavender-200);
+    }
+
+    .message-error {
+      background: var(--rose-50);
+      color: var(--danger-text);
+      border: 1px solid var(--rose-200);
+    }
+
+    /* ==============================
+       FOOTER
+    ============================== */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    .footer a {
+      color: var(--pink-500);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ==============================
+       LAST UPDATED
+    ============================== */
+    .last-updated {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .auto-refresh-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--lavender-50);
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      color: var(--lavender-400);
+      border: 1px solid var(--lavender-200);
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <h1>✨ Dashboard Sensor LDR</h1>
+    <p>Monitor Intensitas Cahaya — ESP32 + LDR</p>
+  </header>
+
+  <div class="container">
+    <!-- SETTINGS TOGGLE -->
+    <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">
+      ⚙️ Pengaturan GitHub
+    </button>
+
+    <!-- SETTINGS PANEL -->
+    <div class="settings-content" id="settingsPanel">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> Konfigurasi Akses GitHub</div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">
+          Masukkan detail repositori GitHub Anda. Data disimpan secara lokal di browser (localStorage) dan tidak dikirim ke server manapun.
+        </p>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>GitHub Owner (Username)</label>
+            <input type="text" id="ghOwner" placeholder="contoh: byyaja">
+          </div>
+          <div class="form-group">
+            <label>Repository Name</label>
+            <input type="text" id="ghRepo" placeholder="contoh: unyil">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Personal Access Token (PAT)</label>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Simpan & Muat Data</button>
+          <button class="btn btn-secondary" onclick="clearSettings()">🗑️ Hapus</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT (hidden until settings configured) -->
+    <div id="mainContent">
+      <!-- Loading state -->
+      <div class="loading" id="loadingState">
+        <div class="spinner"></div>
+        <p>Memuat data sensor...</p>
+      </div>
+
+      <!-- No config message -->
+      <div class="message-box message-info" id="noConfigMsg" style="display: none;">
+        <p style="font-size: 1.3rem; margin-bottom: 8px;">🔑</p>
+        <p>Klik <strong>⚙️ Pengaturan GitHub</strong> di atas untuk menghubungkan ke repositori Anda.</p>
+      </div>
+
+      <!-- Error message -->
+      <div class="message-box message-error" id="errorMsg" style="display: none;">
+        <p style="font-size: 1.3rem; margin-bottom: 8px;">❌</p>
+        <p id="errorText">Terjadi kesalahan</p>
+      </div>
+
+      <!-- Dashboard content -->
+      <div id="dashboardContent" style="display: none;">
+
+        <!-- Last updated -->
+        <div class="last-updated" id="lastUpdated"></div>
+
+        <!-- STATUS + STATS -->
+        <div class="grid-2">
+          <!-- Real-time Status -->
+          <div class="card status-panel" id="statusPanel">
+            <div class="status-icon" id="statusIcon">💡</div>
+            <div class="status-label" id="statusLabel">—</div>
+            <div class="status-kondisi" id="statusKondisi">Memuat...</div>
+            <div>
+              <span class="status-badge badge-safe" id="statusBadge">AMAN</span>
+            </div>
+            <div class="status-meta">
+              <span>📈 Nilai LDR: <strong id="statusLdr">—</strong></span>
+              <span>🕐 <span id="statusTime">—</span></span>
+              <span>📍 <span id="statusLocation">—</span></span>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div>
+            <div class="grid-4" style="grid-template-columns: repeat(2, 1fr);">
+              <div class="stat-card pink">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="totalReadings">0</div>
+                <div class="stat-label">Total Pembacaan</div>
+              </div>
+              <div class="stat-card mint">
+                <div class="stat-icon">🟢</div>
+                <div class="stat-value" id="totalSafe">0</div>
+                <div class="stat-label">Kondisi Aman</div>
+              </div>
+              <div class="stat-card lavender">
+                <div class="stat-icon">🔴</div>
+                <div class="stat-value" id="totalDanger">0</div>
+                <div class="stat-label">Kondisi Bahaya</div>
+              </div>
+              <div class="stat-card peach">
+                <div class="stat-icon">📈</div>
+                <div class="stat-value" id="avgLdr">0</div>
+                <div class="stat-label">Rata-rata LDR</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHART: Tren 12 Jam -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📈</span> Tren Intensitas Cahaya (12 Jam Terakhir)</div>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- PARAMETER + PIE CHART -->
+        <div class="grid-2">
+          <!-- Parameter Jurnal LDR -->
+          <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Parameter Sensor (Jurnal LDR)</div>
+            <table class="param-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Kondisi Cahaya</th>
+                  <th>Nilai ADC</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>🌑 Gelap total</td>
+                  <td>≥ 3763</td>
+                  <td><span class="badge-sm danger">BAHAYA</span></td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>🌘 Remang-remang</td>
+                  <td>2400 – 3762</td>
+                  <td><span class="badge-sm safe">AMAN</span></td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>🌤️ Cahaya terang</td>
+                  <td>1040 – 2399</td>
+                  <td><span class="badge-sm safe">AMAN</span></td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>☀️ Cahaya sangat terang</td>
+                  <td>< 1040</td>
+                  <td><span class="badge-sm safe">AMAN</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pie Chart: Distribusi Kondisi -->
+          <div class="card">
+            <div class="card-title"><span class="icon">🍩</span> Distribusi Kondisi</div>
+            <div style="position: relative; height: 280px;">
+              <canvas id="pieChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORY TABLE -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📜</span> Riwayat Pembacaan Sensor</div>
+          <div class="history-wrapper">
+            <table class="history-table" id="historyTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Waktu</th>
+                  <th>Status</th>
+                  <th>Kondisi</th>
+                  <th>Lokasi</th>
+                  <th>Nilai LDR</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>✨ ESP32 Sensor LDR Dashboard — Dibuat dengan 💖</p>
+    <p style="margin-top: 4px;">Auto-refresh setiap 2 menit</p>
+  </footer>
+
+  <script>
+    // ============================================
+    //  GLOBAL STATE
+    // ============================================
+    let sensorData = [];
+    let trendChart = null;
+    let pieChart = null;
+    let refreshInterval = null;
+
+    // ============================================
+    //  SETTINGS MANAGEMENT
+    // ============================================
+    function toggleSettings() {
+      const panel = document.getElementById('settingsPanel');
+      panel.classList.toggle('active');
+    }
+
+    function loadSavedSettings() {
+      const owner = localStorage.getItem('gh_owner') || '';
+      const repo = localStorage.getItem('gh_repo') || '';
+      const token = localStorage.getItem('gh_token') || '';
+
+      document.getElementById('ghOwner').value = owner;
+      document.getElementById('ghRepo').value = repo;
+      document.getElementById('ghToken').value = token;
+
+      return { owner, repo, token };
+    }
+
+    function saveSettings() {
+      const owner = document.getElementById('ghOwner').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim();
+      const token = document.getElementById('ghToken').value.trim();
+
+      if (!owner || !repo || !token) {
+        alert('Semua field harus diisi!');
+        return;
+      }
+
+      localStorage.setItem('gh_owner', owner);
+      localStorage.setItem('gh_repo', repo);
+      localStorage.setItem('gh_token', token);
+
+      // Close settings panel
+      document.getElementById('settingsPanel').classList.remove('active');
+
+      // Load data
+      fetchData();
+    }
+
+    function clearSettings() {
+      localStorage.removeItem('gh_owner');
+      localStorage.removeItem('gh_repo');
+      localStorage.removeItem('gh_token');
+      document.getElementById('ghOwner').value = '';
+      document.getElementById('ghRepo').value = '';
+      document.getElementById('ghToken').value = '';
+
+      // Reset UI
+      document.getElementById('dashboardContent').style.display = 'none';
+      document.getElementById('noConfigMsg').style.display = 'block';
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMsg').style.display = 'none';
+
+      if (refreshInterval) clearInterval(refreshInterval);
+    }
+
+    // ============================================
+    //  FETCH DATA FROM GITHUB
+    // ============================================
+    async function fetchData() {
+      const settings = loadSavedSettings();
+
+      if (!settings.owner || !settings.repo || !settings.token) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('noConfigMsg').style.display = 'block';
+        document.getElementById('dashboardContent').style.display = 'none';
+        return;
+      }
+
+      // Show loading
+      document.getElementById('loadingState').style.display = 'block';
+      document.getElementById('noConfigMsg').style.display = 'none';
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('dashboardContent').style.display = 'none';
+
+      try {
+        const url = `https://api.github.com/repos/${settings.owner}/${settings.repo}/contents/logs/sensor_log.csv`;
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `token ${settings.token}`,
+            'Accept': 'application/vnd.github.v3.raw',
+            'User-Agent': 'LDR-Dashboard'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+
+        const csvText = await response.text();
+        parseCSV(csvText);
+
+        // Show dashboard
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('dashboardContent').style.display = 'block';
+
+        // Render everything
+        renderStatus();
+        renderStats();
+        renderTrendChart();
+        renderPieChart();
+        renderHistory();
+        updateLastUpdated();
+
+        // Setup auto-refresh every 2 minutes
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(fetchData, 120000);
+
+      } catch (err) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorMsg').style.display = 'block';
+        document.getElementById('errorText').textContent = err.message;
+        console.error('Fetch error:', err);
+      }
+    }
+
+    // ============================================
+    //  PARSE CSV DATA
+    // ============================================
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      sensorData = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 4) continue;
+
+        let entry;
+        // Support both old format (4 cols) and new format (5 cols with kondisi)
+        if (cols.length >= 5) {
+          entry = {
+            timestamp: cols[0].trim(),
+            status: cols[1].trim(),
+            kondisi: cols[2].trim(),
+            lokasi: cols[3].trim(),
+            ldr: parseInt(cols[4].trim()) || 0
+          };
+        } else {
+          // Old format without kondisi column
+          const ldr = parseInt(cols[3].trim()) || 0;
+          entry = {
+            timestamp: cols[0].trim(),
+            status: cols[1].trim(),
+            kondisi: classifyLDR(ldr),
+            lokasi: cols[2].trim(),
+            ldr: ldr
+          };
+        }
+
+        sensorData.push(entry);
+      }
+    }
+
+    // ============================================
+    //  CLASSIFY LDR VALUE
+    // ============================================
+    function classifyLDR(value) {
+      if (value >= 3763) return 'Gelap total';
+      if (value >= 2400) return 'Remang-remang';
+      if (value >= 1040) return 'Cahaya terang';
+      return 'Cahaya sangat terang';
+    }
+
+    function isDanger(value) {
+      return value >= 3763;
+    }
+
+    function getKondisiIcon(kondisi) {
+      switch (kondisi) {
+        case 'Gelap total': return '🌑';
+        case 'Remang-remang': return '🌘';
+        case 'Cahaya terang': return '🌤️';
+        case 'Cahaya sangat terang': return '☀️';
+        default: return '💡';
+      }
+    }
+
+    function getStatusColor(kondisi) {
+      switch (kondisi) {
+        case 'Gelap total': return '#dc2626';
+        case 'Remang-remang': return '#f59e0b';
+        case 'Cahaya terang': return '#22c55e';
+        case 'Cahaya sangat terang': return '#3b82f6';
+        default: return '#9ca3af';
+      }
+    }
+
+    // ============================================
+    //  RENDER STATUS PANEL
+    // ============================================
+    function renderStatus() {
+      if (sensorData.length === 0) return;
+
+      const latest = sensorData[sensorData.length - 1];
+      const danger = isDanger(latest.ldr);
+
+      document.getElementById('statusIcon').textContent = getKondisiIcon(latest.kondisi);
+      document.getElementById('statusLabel').textContent = latest.kondisi;
+      document.getElementById('statusKondisi').textContent =
+        `Nilai ADC: ${latest.ldr}`;
+
+      const badge = document.getElementById('statusBadge');
+      badge.textContent = danger ? '🔴 BAHAYA' : '🟢 AMAN';
+      badge.className = `status-badge ${danger ? 'badge-danger' : 'badge-safe'}`;
+
+      document.getElementById('statusLdr').textContent = latest.ldr;
+      document.getElementById('statusTime').textContent = latest.timestamp;
+      document.getElementById('statusLocation').textContent = latest.lokasi;
+
+      // Change status panel color based on danger
+      const panel = document.getElementById('statusPanel');
+      if (danger) {
+        panel.style.background = 'linear-gradient(135deg, #fff5f5, #ffe4e6)';
+        panel.style.borderColor = '#fca5a5';
+      } else {
+        panel.style.background = '';
+        panel.style.borderColor = '';
+      }
+    }
+
+    // ============================================
+    //  RENDER STATS
+    // ============================================
+    function renderStats() {
+      const total = sensorData.length;
+      let safe = 0, danger = 0, sumLdr = 0;
+
+      sensorData.forEach(d => {
+        if (isDanger(d.ldr)) {
+          danger++;
+        } else {
+          safe++;
+        }
+        sumLdr += d.ldr;
+      });
+
+      document.getElementById('totalReadings').textContent = total;
+      document.getElementById('totalSafe').textContent = safe;
+      document.getElementById('totalDanger').textContent = danger;
+      document.getElementById('avgLdr').textContent = total > 0 ? Math.round(sumLdr / total) : 0;
+    }
+
+    // ============================================
+    //  RENDER TREND CHART (12 jam terakhir)
+    // ============================================
+    function renderTrendChart() {
+      // Get last 72 data points (12 jam × 6 pembacaan/jam)
+      const last72 = sensorData.slice(-72);
+
+      const labels = last72.map(d => {
+        // Extract time portion
+        const parts = d.timestamp.split(' ');
+        return parts.length >= 2 ? parts[1] : d.timestamp;
+      });
+
+      const values = last72.map(d => d.ldr);
+
+      // Color each point based on danger status
+      const pointColors = last72.map(d => {
+        if (d.ldr >= 3763) return '#dc2626';
+        if (d.ldr >= 2400) return '#f59e0b';
+        if (d.ldr >= 1040) return '#22c55e';
+        return '#3b82f6';
+      });
+
+      const ctx = document.getElementById('trendChart').getContext('2d');
+
+      if (trendChart) trendChart.destroy();
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Nilai LDR',
+            data: values,
+            borderColor: '#ec4899',
+            backgroundColor: 'rgba(236, 72, 153, 0.08)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+            tooltip: {
+              backgroundColor: 'rgba(74, 25, 66, 0.9)',
+              titleFont: { family: 'Quicksand', weight: '600' },
+              bodyFont: { family: 'Quicksand', weight: '500' },
+              padding: 12,
+              cornerRadius: 12,
+              callbacks: {
+                afterBody: function(context) {
+                  const idx = context[0].dataIndex;
+                  const d = last72[idx];
+                  return `Kondisi: ${d.kondisi}\nStatus: ${isDanger(d.ldr) ? 'BAHAYA' : 'AMAN'}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 4095,
+              ticks: {
+                font: { family: 'Quicksand', weight: '600', size: 11 },
+                color: '#a06090',
+              },
+              grid: {
+                color: 'rgba(236, 72, 153, 0.08)',
+              }
+            },
+            x: {
+              ticks: {
+                font: { family: 'Quicksand', weight: '600', size: 10 },
+                color: '#a06090',
+                maxRotation: 45,
+                maxTicksLimit: 12,
+              },
+              grid: {
+                display: false,
+              }
+            }
+          },
+          // Horizontal threshold lines
+          // Rendered via plugin below
+        },
+        plugins: [{
+          id: 'thresholdLines',
+          afterDraw: function(chart) {
+            const ctx = chart.ctx;
+            const yAxis = chart.scales.y;
+            const xAxis = chart.scales.x;
+
+            const thresholds = [
+              { value: 3763, color: '#dc2626', label: 'Gelap total (3763)' },
+              { value: 2400, color: '#f59e0b', label: 'Remang (2400)' },
+              { value: 1040, color: '#22c55e', label: 'Terang (1040)' },
+            ];
+
+            thresholds.forEach(t => {
+              const y = yAxis.getPixelForValue(t.value);
+              if (y < yAxis.top || y > yAxis.bottom) return;
+
+              ctx.save();
+              ctx.setLineDash([6, 4]);
+              ctx.strokeStyle = t.color;
+              ctx.lineWidth = 1.5;
+              ctx.globalAlpha = 0.5;
+              ctx.beginPath();
+              ctx.moveTo(xAxis.left, y);
+              ctx.lineTo(xAxis.right, y);
+              ctx.stroke();
+
+              ctx.setLineDash([]);
+              ctx.globalAlpha = 0.7;
+              ctx.fillStyle = t.color;
+              ctx.font = '600 10px Quicksand';
+              ctx.fillText(t.label, xAxis.right - ctx.measureText(t.label).width - 8, y - 6);
+              ctx.restore();
+            });
+          }
+        }]
+      });
+    }
+
+    // ============================================
+    //  RENDER PIE CHART
+    // ============================================
+    function renderPieChart() {
+      let counts = {
+        'Gelap total': 0,
+        'Remang-remang': 0,
+        'Cahaya terang': 0,
+        'Cahaya sangat terang': 0
+      };
+
+      sensorData.forEach(d => {
+        const k = classifyLDR(d.ldr);
+        counts[k] = (counts[k] || 0) + 1;
+      });
+
+      const ctx = document.getElementById('pieChart').getContext('2d');
+      if (pieChart) pieChart.destroy();
+
+      pieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(counts),
+          datasets: [{
+            data: Object.values(counts),
+            backgroundColor: [
+              '#fca5a5', // Gelap total - merah muda
+              '#fcd34d', // Remang - kuning lembut
+              '#86efac', // Cahaya terang - hijau mint
+              '#93c5fd', // Cahaya sangat terang - biru lembut
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 3,
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '55%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: { family: 'Quicksand', weight: '600', size: 11 },
+                color: '#4a1942',
+                padding: 16,
+                usePointStyle: true,
+                pointStyleWidth: 10,
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(74, 25, 66, 0.9)',
+              titleFont: { family: 'Quicksand', weight: '600' },
+              bodyFont: { family: 'Quicksand', weight: '500' },
+              padding: 12,
+              cornerRadius: 12,
+              callbacks: {
+                label: function(ctx) {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                  return ` ${ctx.label}: ${ctx.raw} data (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ============================================
+    //  RENDER HISTORY TABLE
+    // ============================================
+    function renderHistory() {
+      const tbody = document.getElementById('historyBody');
+      tbody.innerHTML = '';
+
+      // Show newest first
+      const reversed = [...sensorData].reverse();
+
+      reversed.forEach((d, i) => {
+        const danger = isDanger(d.ldr);
+        const row = document.createElement('tr');
+        if (danger) row.className = 'row-danger';
+
+        row.innerHTML = `
+          <td>${sensorData.length - i}</td>
+          <td>${d.timestamp}</td>
+          <td><span class="badge-sm ${danger ? 'danger' : 'safe'}">${danger ? 'BAHAYA' : 'AMAN'}</span></td>
+          <td>${getKondisiIcon(d.kondisi)} ${d.kondisi}</td>
+          <td>${d.lokasi}</td>
+          <td><strong>${d.ldr}</strong></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // ============================================
+    //  UPDATE LAST UPDATED TIMESTAMP
+    // ============================================
+    function updateLastUpdated() {
+      const now = new Date();
+      const formatted = now.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+
+      document.getElementById('lastUpdated').innerHTML = `
+        <span class="auto-refresh-info">
+          <span class="dot-live"></span>
+          Terakhir dimuat: ${formatted} — Auto-refresh aktif
+        </span>
+      `;
+    }
+
+    // ============================================
+    //  INITIALIZATION
+    // ============================================
+    window.addEventListener('DOMContentLoaded', () => {
+      const settings = loadSavedSettings();
+
+      if (settings.owner && settings.repo && settings.token) {
+        fetchData();
+      } else {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('noConfigMsg').style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
