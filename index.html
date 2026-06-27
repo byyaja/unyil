@@ -1,773 +1,854 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌸 Lampu Kamar - Dashboard</title>
-  <meta name="description" content="Dashboard real-time pemantauan status cahaya lampu kamar menggunakan sensor LDR, ESP8266 dan GitHub.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    /* Sakura Dark Theme styling */
-    :root {
-      --bg-color: #120917;
-      --panel-bg: rgba(28, 15, 36, 0.55);
-      --panel-border: rgba(244, 143, 177, 0.16); /* Soft Pink Border */
-      --text-main: #fff0f5; /* Lavender Blush */
-      --text-muted: #cfa8c3; /* Dusty Rose */
-      
-      --color-primary: #ffb7b2; /* Sakura Pink */
-      --color-primary-glow: rgba(255, 183, 178, 0.2);
-      
-      /* LDR Status colors */
-      --color-gelap: #ff8b94; /* Soft Coral Red (Bahaya) */
-      --color-gelap-glow: rgba(255, 139, 148, 0.25);
-      
-      --color-remang: #ffd3b6; /* Soft Peach (Warning) */
-      --color-remang-glow: rgba(255, 211, 182, 0.2);
-      
-      --color-terang: #d6c7ea; /* Soft Lavender (Aman) */
-      --color-terang-glow: rgba(214, 199, 234, 0.15);
-      
-      --color-sangat-terang: #b2f5ea; /* Soft Mint/Teal (Aman) */
-      --color-sangat-terang-glow: rgba(178, 245, 234, 0.2);
-      
-      --status-color: var(--color-terang);
-      --status-color-glow: var(--color-terang-glow);
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-      background-image: 
-        radial-gradient(circle at 10% 20%, rgba(244, 143, 177, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(214, 188, 250, 0.06) 0%, transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(255, 182, 193, 0.02) 0%, transparent 50%);
-      background-attachment: fixed;
-    }
-    
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem;
-      animation: fadeIn 0.8s ease;
-    }
-    
-    /* Header styling */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2.5rem;
-      padding-bottom: 1.5rem;
-      border-bottom: 1px solid var(--panel-border);
-    }
-    
-    .logo-area h1 {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--color-primary);
-      text-shadow: 0 0 10px rgba(255, 183, 178, 0.3);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    
-    .logo-area p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-top: 0.25rem;
-    }
-    
-    .action-area {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .btn {
-      background: rgba(244, 143, 177, 0.08);
-      border: 1px solid var(--panel-border);
-      color: var(--color-primary);
-      padding: 0.6rem 1.2rem;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.3s ease;
-    }
-    
-    .btn:hover {
-      background: rgba(244, 143, 177, 0.15);
-      border-color: rgba(255, 183, 178, 0.4);
-      transform: translateY(-1px);
-      box-shadow: 0 0 12px rgba(255, 183, 178, 0.25);
-    }
-    
-    .toast-banner {
-      display: none;
-      background: rgba(255, 183, 178, 0.1);
-      border: 1px solid rgba(255, 183, 178, 0.25);
-      color: var(--color-primary);
-      padding: 0.75rem 1.25rem;
-      border-radius: 12px;
-      margin-bottom: 1.5rem;
-      font-size: 0.875rem;
-      align-items: center;
-      gap: 0.75rem;
-      animation: fadeIn 0.5s ease;
-    }
-    
-    /* Stats Cards Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2.5rem;
-    }
-    
-    .card {
-      background: var(--panel-bg);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--panel-border);
-      border-radius: 20px;
-      padding: 1.5rem;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: var(--color-primary);
-    }
-    
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 10px 22px rgba(28, 15, 36, 0.4);
-      border-color: rgba(244, 143, 177, 0.3);
-    }
-    
-    .card-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-    
-    .card-value {
-      font-size: 2rem;
-      font-family: 'Outfit', sans-serif;
-      font-weight: 700;
-      margin-top: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--color-primary);
-    }
-    
-    .card-desc {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 0.5rem;
-    }
-    
-    /* Card specific styling */
-    .card-status::before {
-      background: var(--status-color);
-    }
-    
-    .card-danger::before {
-      background: var(--color-gelap);
-    }
-    
-    .card-safe::before {
-      background: var(--color-terang);
-    }
-    
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 1.75rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--status-color);
-      text-shadow: 0 0 10px var(--status-color-glow);
-    }
-    
-    .pulse-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background-color: var(--status-color);
-      box-shadow: 0 0 0 0 var(--status-color-glow);
-      animation: pulse 2s infinite;
-    }
-    
-    /* Main Layout Grid */
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1.8fr 1.2fr;
-      gap: 1.5rem;
-    }
-    
-    @media (max-width: 968px) {
-      .main-grid {
-        grid-template-columns: 1fr;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🌸 Pemantau Brankas Uang - Dashboard Sakura</title>
+    <meta
+      name="description"
+      content="Dashboard real-time pemantauan status cahaya brankas menggunakan sensor LDR, ESP32 dan GitHub."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Sakura Dark Theme styling */
+      :root {
+        --bg-color: #120917;
+        --panel-bg: rgba(28, 15, 36, 0.55);
+        --panel-border: rgba(244, 143, 177, 0.16); /* Soft Pink Border */
+        --text-main: #fff0f5; /* Lavender Blush */
+        --text-muted: #cfa8c3; /* Dusty Rose */
+
+        --color-primary: #ffb7b2; /* Sakura Pink */
+        --color-primary-glow: rgba(255, 183, 178, 0.2);
+
+        /* LDR Status colors */
+        --color-gelap: #ff8b94; /* Soft Coral Red (Bahaya) */
+        --color-gelap-glow: rgba(255, 139, 148, 0.25);
+
+        --color-remang: #ffd3b6; /* Soft Peach (Warning) */
+        --color-remang-glow: rgba(255, 211, 182, 0.2);
+
+        --color-terang: #d6c7ea; /* Soft Lavender (Aman) */
+        --color-terang-glow: rgba(214, 199, 234, 0.15);
+
+        --color-sangat-terang: #b2f5ea; /* Soft Mint/Teal (Aman) */
+        --color-sangat-terang-glow: rgba(178, 245, 234, 0.2);
+
+        --status-color: var(--color-terang);
+        --status-color-glow: var(--color-terang-glow);
       }
-    }
-    
-    .panel {
-      background: var(--panel-bg);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--panel-border);
-      border-radius: 24px;
-      padding: 1.75rem;
-    }
-    
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid rgba(244, 143, 177, 0.08);
-      padding-bottom: 1rem;
-    }
-    
-    .panel-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--color-primary);
-    }
-    
-    .chart-info {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    
-    /* Chart Container */
-    .chart-container {
-      position: relative;
-      height: 320px;
-      width: 100%;
-    }
-    
-    /* Table Styling */
-    .table-container {
-      max-height: 320px;
-      overflow-y: auto;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.875rem;
-    }
-    
-    th {
-      color: var(--text-muted);
-      font-weight: 600;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid rgba(244, 143, 177, 0.15);
-      position: sticky;
-      top: 0;
-      background: #190e21;
-      z-index: 1;
-    }
-    
-    td {
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid rgba(244, 143, 177, 0.06);
-    }
-    
-    tr:hover td {
-      background: rgba(255, 182, 193, 0.02);
-    }
-    
-    .row-danger {
-      background: rgba(255, 139, 148, 0.05);
-    }
-    
-    .row-danger:hover td {
-      background: rgba(255, 139, 148, 0.08) !important;
-    }
-    
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.25rem 0.6rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      gap: 0.35rem;
-    }
-    
-    .status-pill-gelap {
-      background: rgba(255, 139, 148, 0.1);
-      color: var(--color-gelap);
-      border: 1px solid rgba(255, 139, 148, 0.2);
-    }
-    
-    .status-pill-remang {
-      background: rgba(255, 211, 182, 0.1);
-      color: var(--color-remang);
-      border: 1px solid rgba(255, 211, 182, 0.2);
-    }
-    
-    .status-pill-terang {
-      background: rgba(214, 199, 234, 0.1);
-      color: var(--color-terang);
-      border: 1px solid rgba(214, 199, 234, 0.2);
-    }
-    
-    .status-pill-sangat-terang {
-      background: rgba(178, 245, 234, 0.1);
-      color: var(--color-sangat-terang);
-      border: 1px solid rgba(178, 245, 234, 0.2);
-    }
-    
-    /* Animations */
-    @keyframes pulse {
-      0% {
-        transform: scale(0.95);
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: "Plus Jakarta Sans", sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+        background-image:
+          radial-gradient(
+            circle at 10% 20%,
+            rgba(244, 143, 177, 0.08) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 90% 80%,
+            rgba(214, 188, 250, 0.06) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 50% 50%,
+            rgba(255, 182, 193, 0.02) 0%,
+            transparent 50%
+          );
+        background-attachment: fixed;
+      }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+        animation: fadeIn 0.8s ease;
+      }
+
+      /* Header styling */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--panel-border);
+      }
+
+      .logo-area h1 {
+        font-family: "Outfit", sans-serif;
+        font-size: 1.8rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--color-primary);
+        text-shadow: 0 0 10px rgba(255, 183, 178, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .logo-area p {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+      }
+
+      .action-area {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .btn {
+        background: rgba(244, 143, 177, 0.08);
+        border: 1px solid var(--panel-border);
+        color: var(--color-primary);
+        padding: 0.6rem 1.2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+      }
+
+      .btn:hover {
+        background: rgba(244, 143, 177, 0.15);
+        border-color: rgba(255, 183, 178, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 0 12px rgba(255, 183, 178, 0.25);
+      }
+
+      .toast-banner {
+        display: none;
+        background: rgba(255, 183, 178, 0.1);
+        border: 1px solid rgba(255, 183, 178, 0.25);
+        color: var(--color-primary);
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+        align-items: center;
+        gap: 0.75rem;
+        animation: fadeIn 0.5s ease;
+      }
+
+      /* Stats Cards Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .card {
+        background: var(--panel-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        padding: 1.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--color-primary);
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 22px rgba(28, 15, 36, 0.4);
+        border-color: rgba(244, 143, 177, 0.3);
+      }
+
+      .card-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+      }
+
+      .card-value {
+        font-size: 2rem;
+        font-family: "Outfit", sans-serif;
+        font-weight: 700;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--color-primary);
+      }
+
+      .card-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+      }
+
+      /* Card specific styling */
+      .card-status::before {
+        background: var(--status-color);
+      }
+
+      .card-danger::before {
+        background: var(--color-gelap);
+      }
+
+      .card-safe::before {
+        background: var(--color-terang);
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--status-color);
+        text-shadow: 0 0 10px var(--status-color-glow);
+      }
+
+      .pulse-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background-color: var(--status-color);
         box-shadow: 0 0 0 0 var(--status-color-glow);
+        animation: pulse 2s infinite;
       }
-      70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 10px rgba(255, 183, 178, 0);
-      }
-      100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(255, 183, 178, 0);
-      }
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div id="toastBanner" class="toast-banner">
-      <span>🌸 <b>Mode Demo Sakura:</b> Gagal memuat <code>data.json</code> secara real-time. Menampilkan simulasi data pemantauan LDR 12 jam terakhir.</span>
-    </div>
 
-    <header>
-      <div class="logo-area">
-        <h1>🌸 Pemantau LAMPU KAMAR </h1>
-        <p>Sistem Keamanan Deteksi Cahaya LDR Terintegrasi IoT & Telegram</p>
-      </div>
-      <div class="action-area">
-        <button id="refreshBtn" class="btn" onclick="fetchSensorData()">
-          🔄 Refresh Data
-        </button>
-      </div>
-    </header>
+      /* Main Layout Grid */
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1.8fr 1.2fr;
+        gap: 1.5rem;
+      }
 
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="card card-status">
-        <div class="card-label">Kondisi Cahaya</div>
-        <div class="card-value">
-          <div class="status-badge">
-            <div id="statusPulse" class="pulse-dot"></div>
-            <span id="currentStatusText">Loading...</span>
+      @media (max-width: 968px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        background: var(--panel-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--panel-border);
+        border-radius: 24px;
+        padding: 1.75rem;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(244, 143, 177, 0.08);
+        padding-bottom: 1rem;
+      }
+
+      .panel-title {
+        font-family: "Outfit", sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--color-primary);
+      }
+
+      .chart-info {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      /* Chart Container */
+      .chart-container {
+        position: relative;
+        height: 320px;
+        width: 100%;
+      }
+
+      /* Table Styling */
+      .table-container {
+        max-height: 320px;
+        overflow-y: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.875rem;
+      }
+
+      th {
+        color: var(--text-muted);
+        font-weight: 600;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(244, 143, 177, 0.15);
+        position: sticky;
+        top: 0;
+        background: #190e21;
+        z-index: 1;
+      }
+
+      td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid rgba(244, 143, 177, 0.06);
+      }
+
+      tr:hover td {
+        background: rgba(255, 182, 193, 0.02);
+      }
+
+      .row-danger {
+        background: rgba(255, 139, 148, 0.05);
+      }
+
+      .row-danger:hover td {
+        background: rgba(255, 139, 148, 0.08) !important;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        gap: 0.35rem;
+      }
+
+      .status-pill-gelap {
+        background: rgba(255, 139, 148, 0.1);
+        color: var(--color-gelap);
+        border: 1px solid rgba(255, 139, 148, 0.2);
+      }
+
+      .status-pill-remang {
+        background: rgba(255, 211, 182, 0.1);
+        color: var(--color-remang);
+        border: 1px solid rgba(255, 211, 182, 0.2);
+      }
+
+      .status-pill-terang {
+        background: rgba(214, 199, 234, 0.1);
+        color: var(--color-terang);
+        border: 1px solid rgba(214, 199, 234, 0.2);
+      }
+
+      .status-pill-sangat-terang {
+        background: rgba(178, 245, 234, 0.1);
+        color: var(--color-sangat-terang);
+        border: 1px solid rgba(178, 245, 234, 0.2);
+      }
+
+      /* Animations */
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 var(--status-color-glow);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 10px rgba(255, 183, 178, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 183, 178, 0);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="toastBanner" class="toast-banner">
+        <span
+          >🌸 <b>Mode Demo Sakura:</b> Gagal memuat
+          <code>data.json</code> secara real-time. Menampilkan simulasi data
+          pemantauan LDR 12 jam terakhir.</span
+        >
+      </div>
+
+      <header>
+        <div class="logo-area">
+          <h1>🌸 Pemantau Brankas Uang</h1>
+          <p>Sistem Keamanan Deteksi Cahaya LDR Terintegrasi IoT & Telegram</p>
+        </div>
+        <div class="action-area">
+          <button id="refreshBtn" class="btn" onclick="fetchSensorData()">
+            🔄 Refresh Data
+          </button>
+        </div>
+      </header>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="card card-status">
+          <div class="card-label">Kondisi Cahaya</div>
+          <div class="card-value">
+            <div class="status-badge">
+              <div id="statusPulse" class="pulse-dot"></div>
+              <span id="currentStatusText">Loading...</span>
+            </div>
+          </div>
+          <div class="card-desc" id="statusDesc">Membaca data sensor...</div>
+        </div>
+
+        <div class="card card-danger">
+          <div class="card-label">Total Gelap (Bahaya)</div>
+          <div
+            class="card-value"
+            style="color: var(--color-gelap)"
+            id="dangerCountText"
+          >
+            0
+          </div>
+          <div class="card-desc">Keadaan brankas ditutup rapat</div>
+        </div>
+
+        <div class="card card-safe">
+          <div class="card-label">Kondisi Aman</div>
+          <div
+            class="card-value"
+            style="color: var(--color-terang)"
+            id="safeCountText"
+          >
+            0
+          </div>
+          <div class="card-desc">Remang / Terang / Sangat Terang</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Total Pembacaan (12j)</div>
+          <div class="card-value" id="totalCountText">0</div>
+          <div class="card-desc" id="lastUpdatedTimeText">
+            Update terakhir: -
           </div>
         </div>
-        <div class="card-desc" id="statusDesc">Membaca data sensor...</div>
       </div>
 
-      <div class="card card-danger">
-        <div class="card-label">Total Gelap (Bahaya)</div>
-        <div class="card-value" style="color: var(--color-gelap)" id="dangerCountText">0</div>
-        <div class="card-desc">Keadaan brankas ditutup rapat</div>
-      </div>
-
-      <div class="card card-safe">
-        <div class="card-label">Kondisi Aman</div>
-        <div class="card-value" style="color: var(--color-terang)" id="safeCountText">0</div>
-        <div class="card-desc">Remang / Terang / Sangat Terang</div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">Total Pembacaan (12j)</div>
-        <div class="card-value" id="totalCountText">0</div>
-        <div class="card-desc" id="lastUpdatedTimeText">Update terakhir: -</div>
-      </div>
-    </div>
-
-    <!-- Main Grid -->
-    <div class="main-grid">
-      <!-- Chart Panel -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">📈 Grafik Tingkat Cahaya LDR (12 Jam)</div>
-          <div class="chart-info">Interval: 10 menit</div>
+      <!-- Main Grid -->
+      <div class="main-grid">
+        <!-- Chart Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📈 Grafik Tingkat Cahaya LDR (12 Jam)</div>
+            <div class="chart-info">Interval: 10 menit</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
         </div>
-        <div class="chart-container">
-          <canvas id="trendChart"></canvas>
-        </div>
-      </div>
 
-      <!-- Logs Panel -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">📋 Riwayat Aktivitas Sensor</div>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Waktu</th>
-                <th>Status</th>
-                <th>Lokasi</th>
-              </tr>
-            </thead>
-            <tbody id="logsTableBody">
-              <tr>
-                <td colspan="3" style="text-align: center; color: var(--text-muted);">Memuat riwayat aktivitas...</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Logs Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📋 Riwayat Aktivitas Sensor</div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Status</th>
+                  <th>Lokasi</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <tr>
+                  <td
+                    colspan="3"
+                    style="text-align: center; color: var(--text-muted)"
+                  >
+                    Memuat riwayat aktivitas...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <script>
-    let trendChart = null;
+    <script>
+      let trendChart = null;
 
-    // Menghasilkan data simulasi LDR (4 level) untuk demo
-    function generateMockData() {
-      const mockData = [];
-      const now = new Date();
-      // Total 72 pembacaan (10 menit sekali selama 12 jam)
-      for (let i = 72; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 10 * 60 * 1000);
-        
-        let status = "Terang";
-        const hour = time.getHours();
-        const min = time.getMinutes();
-        
-        // Simulasikan pola kecerahan harian yang berulang
-        if ((hour >= 20 || hour < 5) || (hour === 14 && min <= 40)) {
-          status = "Gelap"; // Malam hari / disimulasikan brankas tertutup
-        } else if (hour === 5 || hour === 6 || hour === 18 || hour === 19) {
-          status = "Remang-remang"; // Fajar / senja
-        } else if (hour >= 11 && hour <= 13) {
-          status = "Sangat Terang"; // Siang hari
+      // Menghasilkan data simulasi LDR (4 level) untuk demo
+      function generateMockData() {
+        const mockData = [];
+        const now = new Date();
+        // Total 72 pembacaan (10 menit sekali selama 12 jam)
+        for (let i = 72; i >= 0; i--) {
+          const time = new Date(now.getTime() - i * 10 * 60 * 1000);
+
+          let status = "Terang";
+          const hour = time.getHours();
+          const min = time.getMinutes();
+
+          // Simulasikan pola kecerahan harian yang berulang
+          if (hour >= 20 || hour < 5 || (hour === 14 && min <= 40)) {
+            status = "Gelap"; // Malam hari / disimulasikan brankas tertutup
+          } else if (hour === 5 || hour === 6 || hour === 18 || hour === 19) {
+            status = "Remang-remang"; // Fajar / senja
+          } else if (hour >= 11 && hour <= 13) {
+            status = "Sangat Terang"; // Siang hari
+          } else {
+            status = "Terang"; // Pagi / sore
+          }
+
+          const timeStr =
+            time.getFullYear() +
+            "-" +
+            String(time.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(time.getDate()).padStart(2, "0") +
+            " " +
+            String(time.getHours()).padStart(2, "0") +
+            ":" +
+            String(time.getMinutes()).padStart(2, "0") +
+            ":" +
+            String(time.getSeconds()).padStart(2, "0") +
+            " WIB";
+
+          mockData.push({
+            status: status,
+            location: "Brankas Uang LDR",
+            timestamp: timeStr,
+          });
+        }
+        return mockData;
+      }
+
+      // Fungsi mengambil data
+      async function fetchSensorData() {
+        const refreshBtn = document.getElementById("refreshBtn");
+        refreshBtn.disabled = true;
+        refreshBtn.innerText = "⏳ Memperbarui...";
+
+        // Deteksi dinamis owner & repo dari URL GitHub Pages agar bersifat portabel
+        let githubOwner = "byyaja";
+        let githubRepo = "unyil";
+        const branch = "main"; // Sesuaikan jika branch utama Anda bernama 'master'
+
+        if (window.location.hostname.includes(".github.io")) {
+          githubOwner = window.location.hostname.split(".")[0];
+          githubRepo = window.location.pathname.split("/")[1];
+        }
+
+        // Gunakan URL CDN Raw GitHub dengan cache-buster (?t=...) agar update langsung terbaca begitu commit selesai
+        const rawUrl = `https://raw.githubusercontent.com/${githubOwner}/${githubRepo}/${branch}/ldr_sensor/data.json?t=${new Date().getTime()}`;
+
+        try {
+          let response = await fetch(rawUrl);
+
+          if (!response.ok) {
+            console.log(
+              "Gagal memuat raw CDN, mencoba fallback ke ./data.json lokal...",
+            );
+            // Falls back to local data.json which is inside the ldr_sensor folder
+            response = await fetch("./data.json", { cache: "no-store" });
+          }
+
+          if (!response.ok) {
+            throw new Error("Gagal memuat data");
+          }
+
+          const data = await response.json();
+          document.getElementById("toastBanner").style.display = "none";
+          renderDashboard(data);
+        } catch (error) {
+          console.warn("Menggunakan data simulasi karena error:", error);
+          document.getElementById("toastBanner").style.display = "flex";
+          const simulatedData = generateMockData();
+          renderDashboard(simulatedData);
+        } finally {
+          refreshBtn.disabled = false;
+          refreshBtn.innerText = "🔄 Refresh Data";
+        }
+      }
+
+      // Merender data ke Dashboard
+      function renderDashboard(dataList) {
+        if (!dataList || dataList.length === 0) {
+          document.getElementById("currentStatusText").innerText =
+            "Menunggu Data";
+          document.getElementById("statusDesc").innerText =
+            "Hubungkan sensor untuk mulai mengirim data.";
+          document.getElementById("safeCountText").innerText = "0";
+          document.getElementById("dangerCountText").innerText = "0";
+          document.getElementById("totalCountText").innerText = "0";
+          return;
+        }
+
+        // Ambil 72 data terakhir (12 jam)
+        const data12h = dataList.slice(-72);
+
+        // Update Statistik
+        const latestData = dataList[dataList.length - 1];
+        const dangerCount = data12h.filter((d) => d.status === "Gelap").length; // Gelap = Bahaya
+        const safeCount = data12h.filter((d) => d.status !== "Gelap").length; // Remang/Terang/Sangat Terang = Aman
+        const totalCount = data12h.length;
+
+        // Render Status Saat Ini
+        const currentStatusText = document.getElementById("currentStatusText");
+        const statusPulse = document.getElementById("statusPulse");
+        const statusDesc = document.getElementById("statusDesc");
+        const r = document.documentElement;
+
+        currentStatusText.innerText = latestData.status;
+        statusDesc.innerText = `Terakhir dicek: ${latestData.timestamp}`;
+
+        if (latestData.status === "Gelap") {
+          r.style.setProperty("--status-color", "var(--color-gelap)");
+          r.style.setProperty("--status-color-glow", "var(--color-gelap-glow)");
+          statusDesc.innerHTML = `🚨 BAHAYA: Kondisi Gelap<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
+        } else if (latestData.status === "Remang-remang") {
+          r.style.setProperty("--status-color", "var(--color-remang)");
+          r.style.setProperty(
+            "--status-color-glow",
+            "var(--color-remang-glow)",
+          );
+          statusDesc.innerHTML = `🌗 AMAN: Remang-remang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
+        } else if (latestData.status === "Terang") {
+          r.style.setProperty("--status-color", "var(--color-terang)");
+          r.style.setProperty(
+            "--status-color-glow",
+            "var(--color-terang-glow)",
+          );
+          statusDesc.innerHTML = `☀️ AMAN: Kondisi Terang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
         } else {
-          status = "Terang"; // Pagi / sore
+          r.style.setProperty("--status-color", "var(--color-sangat-terang)");
+          r.style.setProperty(
+            "--status-color-glow",
+            "var(--color-sangat-terang-glow)",
+          );
+          statusDesc.innerHTML = `⚡ AMAN: Sangat Terang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
         }
 
-        const timeStr = time.getFullYear() + "-" + 
-                        String(time.getMonth() + 1).padStart(2, '0') + "-" + 
-                        String(time.getDate()).padStart(2, '0') + " " + 
-                        String(time.getHours()).padStart(2, '0') + ":" + 
-                        String(time.getMinutes()).padStart(2, '0') + ":" + 
-                        String(time.getSeconds()).padStart(2, '0') + " WIB";
-        
-        mockData.push({
-          status: status,
-          location: "Lampu Kamar LDR",
-          timestamp: timeStr
-        });
-      }
-      return mockData;
-    }
+        // Update angka statistik
+        document.getElementById("safeCountText").innerText = safeCount;
+        document.getElementById("dangerCountText").innerText = dangerCount;
+        document.getElementById("totalCountText").innerText = totalCount;
+        document.getElementById("lastUpdatedTimeText").innerText =
+          `Update terakhir: ${latestData.timestamp.split(" ")[1] || "-"}`;
 
-    // Fungsi mengambil data
-    async function fetchSensorData() {
-      const refreshBtn = document.getElementById("refreshBtn");
-      refreshBtn.disabled = true;
-      refreshBtn.innerText = "⏳ Memperbarui...";
-      
-      const githubOwner = "9Syahrul915";
-      const githubRepo = "utssensor";
-      const branch = "main";
-      // Pointing to ldr_sensor/data.json
-      const rawUrl = `https://raw.githubusercontent.com/${githubOwner}/${githubRepo}/${branch}/ldr_sensor/data.json?t=${new Date().getTime()}`;
-      
-      try {
-        let response = await fetch(rawUrl);
-        
-        if (!response.ok) {
-          console.log("Gagal memuat raw CDN, mencoba fallback ke ./data.json lokal...");
-          // Falls back to local data.json which is inside the ldr_sensor folder
-          response = await fetch('./data.json', { cache: 'no-store' });
-        }
-        
-        if (!response.ok) {
-          throw new Error('Gagal memuat data');
-        }
-        
-        const data = await response.json();
-        document.getElementById("toastBanner").style.display = "none";
-        renderDashboard(data);
-      } catch (error) {
-        console.warn("Menggunakan data simulasi karena error:", error);
-        document.getElementById("toastBanner").style.display = "flex";
-        const simulatedData = generateMockData();
-        renderDashboard(simulatedData);
-      } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.innerText = "🔄 Refresh Data";
-      }
-    }
+        // Render Tabel Riwayat (terbaru di atas)
+        const logsTableBody = document.getElementById("logsTableBody");
+        logsTableBody.innerHTML = "";
 
-    // Merender data ke Dashboard
-    function renderDashboard(dataList) {
-      if (!dataList || dataList.length === 0) {
-        document.getElementById("currentStatusText").innerText = "Menunggu Data";
-        document.getElementById("statusDesc").innerText = "Hubungkan sensor untuk mulai mengirim data.";
-        document.getElementById("safeCountText").innerText = "0";
-        document.getElementById("dangerCountText").innerText = "0";
-        document.getElementById("totalCountText").innerText = "0";
-        return;
-      }
+        const reversedData = [...dataList].reverse();
+        reversedData.forEach((item) => {
+          const row = document.createElement("tr");
+          if (item.status === "Gelap") {
+            row.classList.add("row-danger");
+          }
 
-      // Ambil 72 data terakhir (12 jam)
-      const data12h = dataList.slice(-72);
-      
-      // Update Statistik
-      const latestData = dataList[dataList.length - 1];
-      const dangerCount = data12h.filter(d => d.status === "Gelap").length; // Gelap = Bahaya
-      const safeCount = data12h.filter(d => d.status !== "Gelap").length; // Remang/Terang/Sangat Terang = Aman
-      const totalCount = data12h.length;
+          let statusClass = "status-pill-terang";
+          if (item.status === "Gelap") statusClass = "status-pill-gelap";
+          else if (item.status === "Remang-remang")
+            statusClass = "status-pill-remang";
+          else if (item.status === "Sangat Terang")
+            statusClass = "status-pill-sangat-terang";
 
-      // Render Status Saat Ini
-      const currentStatusText = document.getElementById("currentStatusText");
-      const statusPulse = document.getElementById("statusPulse");
-      const statusDesc = document.getElementById("statusDesc");
-      const r = document.documentElement;
+          let dotColor = "var(--color-terang)";
+          if (item.status === "Gelap") dotColor = "var(--color-gelap)";
+          else if (item.status === "Remang-remang")
+            dotColor = "var(--color-remang)";
+          else if (item.status === "Sangat Terang")
+            dotColor = "var(--color-sangat-terang)";
 
-      currentStatusText.innerText = latestData.status;
-      statusDesc.innerText = `Terakhir dicek: ${latestData.timestamp}`;
-
-      if (latestData.status === "Gelap") {
-        r.style.setProperty('--status-color', 'var(--color-gelap)');
-        r.style.setProperty('--status-color-glow', 'var(--color-gelap-glow)');
-        statusDesc.innerHTML = `🚨 BAHAYA: Kondisi Gelap<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
-      } else if (latestData.status === "Remang-remang") {
-        r.style.setProperty('--status-color', 'var(--color-remang)');
-        r.style.setProperty('--status-color-glow', 'var(--color-remang-glow)');
-        statusDesc.innerHTML = `🌗 AMAN: Remang-remang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
-      } else if (latestData.status === "Terang") {
-        r.style.setProperty('--status-color', 'var(--color-terang)');
-        r.style.setProperty('--status-color-glow', 'var(--color-terang-glow)');
-        statusDesc.innerHTML = `☀️ AMAN: Kondisi Terang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
-      } else {
-        r.style.setProperty('--status-color', 'var(--color-sangat-terang)');
-        r.style.setProperty('--status-color-glow', 'var(--color-sangat-terang-glow)');
-        statusDesc.innerHTML = `⚡ AMAN: Sangat Terang<br><span style="font-size:0.75rem;color:var(--text-muted)">${latestData.timestamp}</span>`;
-      }
-
-      // Update angka statistik
-      document.getElementById("safeCountText").innerText = safeCount;
-      document.getElementById("dangerCountText").innerText = dangerCount;
-      document.getElementById("totalCountText").innerText = totalCount;
-      document.getElementById("lastUpdatedTimeText").innerText = `Update terakhir: ${latestData.timestamp.split(" ")[1] || '-'}`;
-
-      // Render Tabel Riwayat (terbaru di atas)
-      const logsTableBody = document.getElementById("logsTableBody");
-      logsTableBody.innerHTML = "";
-      
-      const reversedData = [...dataList].reverse();
-      reversedData.forEach(item => {
-        const row = document.createElement("tr");
-        if (item.status === "Gelap") {
-          row.classList.add("row-danger");
-        }
-
-        let statusClass = "status-pill-terang";
-        if (item.status === "Gelap") statusClass = "status-pill-gelap";
-        else if (item.status === "Remang-remang") statusClass = "status-pill-remang";
-        else if (item.status === "Sangat Terang") statusClass = "status-pill-sangat-terang";
-
-        let dotColor = "var(--color-terang)";
-        if (item.status === "Gelap") dotColor = "var(--color-gelap)";
-        else if (item.status === "Remang-remang") dotColor = "var(--color-remang)";
-        else if (item.status === "Sangat Terang") dotColor = "var(--color-sangat-terang)";
-
-        const statusBadgeHTML = `<span class="status-pill ${statusClass}">
+          const statusBadgeHTML = `<span class="status-pill ${statusClass}">
           <span style="width:6px;height:6px;border-radius:50%;background-color:${dotColor}"></span>
           ${item.status}
         </span>`;
 
-        row.innerHTML = `
+          row.innerHTML = `
           <td style="font-family:'Outfit',monospace; font-weight:400;">${item.timestamp}</td>
           <td>${statusBadgeHTML}</td>
           <td style="color:var(--text-muted)">${item.location}</td>
         `;
-        logsTableBody.appendChild(row);
-      });
+          logsTableBody.appendChild(row);
+        });
 
-      // Render Chart
-      renderChart(data12h);
-    }
-
-    // Render grafik tren kecerahan (4 tingkatan)
-    function renderChart(data) {
-      const labels = data.map(d => {
-        const timePart = d.timestamp.split(" ")[1];
-        return timePart ? timePart.substring(0, 5) : "";
-      });
-      
-      // Petakan status ke numerik (Gelap = 0, Remang-remang = 1, Terang = 2, Sangat Terang = 3)
-      const values = data.map(d => {
-        if (d.status === "Gelap") return 0;
-        if (d.status === "Remang-remang") return 1;
-        if (d.status === "Terang") return 2;
-        return 3;
-      });
-
-      const ctx = document.getElementById('trendChart').getContext('2d');
-      
-      if (trendChart) {
-        trendChart.data.labels = labels;
-        trendChart.data.datasets[0].data = values;
-        
-        // Sesuaikan warna grafik dengan status terbaru
-        const latestVal = values[values.length - 1];
-        let color = '#d6c7ea';
-        if (latestVal === 0) color = '#ff8b94';
-        else if (latestVal === 1) color = '#ffd3b6';
-        else if (latestVal === 3) color = '#b2f5ea';
-        
-        trendChart.data.datasets[0].borderColor = color;
-        trendChart.data.datasets[0].backgroundColor = color + '14'; // transparan fill
-        
-        trendChart.update();
-        return;
+        // Render Chart
+        renderChart(data12h);
       }
 
-      const latestVal = values[values.length - 1];
-      let initialColor = '#d6c7ea';
-      if (latestVal === 0) initialColor = '#ff8b94';
-      else if (latestVal === 1) initialColor = '#ffd3b6';
-      else if (latestVal === 3) initialColor = '#b2f5ea';
+      // Render grafik tren kecerahan (4 tingkatan)
+      function renderChart(data) {
+        const labels = data.map((d) => {
+          const timePart = d.timestamp.split(" ")[1];
+          return timePart ? timePart.substring(0, 5) : "";
+        });
 
-      trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Tingkat Cahaya',
-            data: values,
-            stepped: true, // Garis berundak
-            borderColor: initialColor,
-            borderWidth: 3,
-            backgroundColor: initialColor + '10',
-            fill: true,
-            tension: 0,
-            pointRadius: 0,
-            pointHoverRadius: 6,
-            pointBackgroundColor: '#ffffff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const val = context.parsed.y;
-                  if (val === 3) return "Status: Sangat Terang (Aman)";
-                  if (val === 2) return "Status: Terang (Aman)";
-                  if (val === 1) return "Status: Remang-remang (Aman)";
-                  return "Status: GELAP (BAHAYA)";
-                }
-              },
-              backgroundColor: '#1c0f24',
-              titleColor: '#cfa8c3',
-              bodyColor: '#fff0f5',
-              borderColor: 'rgba(244,143,177,0.2)',
-              borderWidth: 1,
-              padding: 10,
-              displayColors: false
-            }
-          },
-          scales: {
-            y: {
-              min: -0.2,
-              max: 3.2,
-              ticks: {
-                stepSize: 1,
-                callback: function(value) {
-                  if (value === 3) return '⚡ S. Terang';
-                  if (value === 2) return '☀️ Terang';
-                  if (value === 1) return '🌗 Remang';
-                  if (value === 0) return '🌑 Gelap (Bahaya)';
-                  return '';
-                },
-                color: '#cfa8c3',
-                font: {
-                  family: 'Plus Jakarta Sans',
-                  weight: '600',
-                  size: 10
-                }
-              },
-              grid: {
-                color: 'rgba(244, 143, 177, 0.06)'
-              }
-            },
-            x: {
-              ticks: {
-                maxTicksLimit: 12,
-                color: '#cfa8c3',
-                font: {
-                  family: 'Plus Jakarta Sans',
-                  size: 10
-                }
-              },
-              grid: {
-                color: 'rgba(244, 143, 177, 0.03)'
-              }
-            }
-          }
+        // Petakan status ke numerik (Gelap = 0, Remang-remang = 1, Terang = 2, Sangat Terang = 3)
+        const values = data.map((d) => {
+          if (d.status === "Gelap") return 0;
+          if (d.status === "Remang-remang") return 1;
+          if (d.status === "Terang") return 2;
+          return 3;
+        });
+
+        const ctx = document.getElementById("trendChart").getContext("2d");
+
+        if (trendChart) {
+          trendChart.data.labels = labels;
+          trendChart.data.datasets[0].data = values;
+
+          // Sesuaikan warna grafik dengan status terbaru
+          const latestVal = values[values.length - 1];
+          let color = "#d6c7ea";
+          if (latestVal === 0) color = "#ff8b94";
+          else if (latestVal === 1) color = "#ffd3b6";
+          else if (latestVal === 3) color = "#b2f5ea";
+
+          trendChart.data.datasets[0].borderColor = color;
+          trendChart.data.datasets[0].backgroundColor = color + "14"; // transparan fill
+
+          trendChart.update();
+          return;
         }
-      });
-    }
 
-    // Panggil saat awal load halaman
-    window.addEventListener('load', fetchSensorData);
-    
-    // Auto-refresh setiap 1 menit
-    setInterval(fetchSensorData, 60000);
-  </script>
-</body>
+        const latestVal = values[values.length - 1];
+        let initialColor = "#d6c7ea";
+        if (latestVal === 0) initialColor = "#ff8b94";
+        else if (latestVal === 1) initialColor = "#ffd3b6";
+        else if (latestVal === 3) initialColor = "#b2f5ea";
+
+        trendChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Tingkat Cahaya",
+                data: values,
+                stepped: true, // Garis berundak
+                borderColor: initialColor,
+                borderWidth: 3,
+                backgroundColor: initialColor + "10",
+                fill: true,
+                tension: 0,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: "#ffffff",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false,
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const val = context.parsed.y;
+                    if (val === 3) return "Status: Sangat Terang (Aman)";
+                    if (val === 2) return "Status: Terang (Aman)";
+                    if (val === 1) return "Status: Remang-remang (Aman)";
+                    return "Status: GELAP (BAHAYA)";
+                  },
+                },
+                backgroundColor: "#1c0f24",
+                titleColor: "#cfa8c3",
+                bodyColor: "#fff0f5",
+                borderColor: "rgba(244,143,177,0.2)",
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false,
+              },
+            },
+            scales: {
+              y: {
+                min: -0.2,
+                max: 3.2,
+                ticks: {
+                  stepSize: 1,
+                  callback: function (value) {
+                    if (value === 3) return "⚡ S. Terang";
+                    if (value === 2) return "☀️ Terang";
+                    if (value === 1) return "🌗 Remang";
+                    if (value === 0) return "🌑 Gelap (Bahaya)";
+                    return "";
+                  },
+                  color: "#cfa8c3",
+                  font: {
+                    family: "Plus Jakarta Sans",
+                    weight: "600",
+                    size: 10,
+                  },
+                },
+                grid: {
+                  color: "rgba(244, 143, 177, 0.06)",
+                },
+              },
+              x: {
+                ticks: {
+                  maxTicksLimit: 12,
+                  color: "#cfa8c3",
+                  font: {
+                    family: "Plus Jakarta Sans",
+                    size: 10,
+                  },
+                },
+                grid: {
+                  color: "rgba(244, 143, 177, 0.03)",
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Panggil saat awal load halaman
+      window.addEventListener("load", fetchSensorData);
+
+      // Auto-refresh setiap 1 menit
+      setInterval(fetchSensorData, 60000);
+    </script>
+  </body>
 </html>
