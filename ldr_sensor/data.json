@@ -3,5 +3,10 @@
     "status": "Terang",
     "location": "Brankas Uang LDR",
     "timestamp": "2026-06-27 15:44:47 WIB"
+  },
+  {
+    "status": "Gelap",
+    "location": "Lampu Kamar",
+    "timestamp": "2026-06-27 17:10:15 WIB"
   }
 ]
