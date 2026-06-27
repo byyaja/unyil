@@ -12,7 +12,7 @@ on:
       location:
         description: 'Lokasi Sensor'
         required: true
-        default: 'Brankas Uang LDR'
+        default: 'Lampu Kamar LDR'
       timestamp:
         description: 'Waktu Deteksi'
         required: false
