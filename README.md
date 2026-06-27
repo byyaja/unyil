@@ -10,9 +10,9 @@
 | 🔔 Status | **AMAN** |
 | 💡 Kondisi | **Cahaya sangat terang** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | 2026-06-27 15:07:10 WIB |
-| 📈 Nilai LDR | 946 |
-| 📁 Total Log | 26 data |
+| 🕐 Waktu | 2026-06-27 15:17:10 WIB |
+| 📈 Nilai LDR | 905 |
+| 📁 Total Log | 27 data |
 
 ## 📂 File Log
 
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada 2026-06-27 15:07:10 WIB*
+*Diperbarui otomatis pada 2026-06-27 15:17:10 WIB*
