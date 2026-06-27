@@ -1,20 +1,22 @@
 /*
  * =====================================================
- *  ESP32 + Sensor LDR + GitHub Log + Telegram
+ *  ESP8266 + Sensor LDR + GitHub Log
  *  Interval: 10 menit | Durasi: 12 jam
  *  Klasifikasi: Gelap total, Remang-remang,
  *               Cahaya terang, Cahaya sangat terang
+ *  Notifikasi Telegram: via GitHub Actions workflow
  * =====================================================
  */
 
-#include <WiFi.h>
-#include <HTTPClient.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
 
 // ============ KONFIGURASI WiFi ============
 const char* WIFI_SSID      = "Home"; //SSID WiFi
 const char* WIFI_PASSWORD   = ""; //Password WIfi
+
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG  = true;
@@ -23,14 +25,17 @@ const char* GITHUB_OWNER    = "byyaja"; // Username Github
 const char* GITHUB_REPO     = "unyil"; // Repository github
 
 // ============ KONFIGURASI SENSOR LDR ============
-#define LDR_PIN         34        // Pin analog untuk LDR (GPIO 34)
-#define LED_INDICATOR   2         // LED bawaan ESP32
+// ESP8266 hanya punya 1 pin analog: A0, resolusi 10-bit (0-1023)
+// Nilai ADC akan di-scale ke 0-4095 agar kompatibel dengan parameter jurnal LDR
+#define LDR_PIN         A0        // Pin analog untuk LDR (A0 pada ESP8266)
+#define LED_INDICATOR   2         // LED bawaan ESP8266 (GPIO2)
 const char* SENSOR_LOCATION = "Lampu kamar";
 
 // Ambang batas berdasarkan jurnal LDR + kondisi remang-remang
-// Gelap total     : ADC >= 3763  -> BAHAYA
-// Remang-remang   : 2400 <= ADC < 3763 -> AMAN
-// Cahaya terang   : 1040 <= ADC < 2400 -> AMAN
+// (nilai dalam skala 0-4095 setelah mapping dari 10-bit)
+// Gelap total          : ADC >= 3763  -> BAHAYA
+// Remang-remang        : 2400 <= ADC < 3763 -> AMAN
+// Cahaya terang        : 1040 <= ADC < 2400 -> AMAN
 // Cahaya sangat terang : ADC < 1040 -> AMAN
 const int BATAS_GELAP_TOTAL   = 3763;
 const int BATAS_REMANG        = 2400;
@@ -53,15 +58,16 @@ int totalBahaya   = 0;
 
 // ============ NTP TIME ============
 const char* ntpServer       = "pool.ntp.org";
-const long  gmtOffset       = 28800;  // GMT+8 WITA detik
+const long  gmtOffset       = 28800;  // GMT+8 WIB (detik)
 const int   daylightOffset  = 0;
 
 // ============ DEKLARASI FUNGSI ============
 void connectWiFi();
-bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTelegram);
+bool sendGitHubLog(String status, String kondisi, int nilaiLDR, bool triggerTelegram);
 String getFormattedTime();
 String klasifikasiCahaya(int nilaiLDR);
 bool isBahaya(int nilaiLDR);
+int readLDR();
 
 // ======================================================
 //                        SETUP
@@ -69,13 +75,14 @@ bool isBahaya(int nilaiLDR);
 void setup() {
   Serial.begin(115200);
   Serial.println("\n==========================================");
-  Serial.println("  ESP32 Sensor LDR + GitHub + Telegram");
+  Serial.println("  ESP8266 Sensor LDR + GitHub Log");
   Serial.println("  Interval: 10 menit | Durasi: 12 jam");
+  Serial.println("  Telegram via GitHub Actions");
   Serial.println("==========================================");
 
   // Setup pin
   pinMode(LED_INDICATOR, OUTPUT);
-  digitalWrite(LED_INDICATOR, LOW);
+  digitalWrite(LED_INDICATOR, HIGH); // LED ESP8266 active LOW
 
   // Koneksi WiFi
   connectWiFi();
@@ -86,7 +93,7 @@ void setup() {
   delay(2000);
 
   // Baca nilai awal LDR
-  int nilaiAwal = analogRead(LDR_PIN);
+  int nilaiAwal = readLDR();
   String statusAwal = klasifikasiCahaya(nilaiAwal);
   Serial.printf("📊 Nilai LDR awal: %d | Kondisi: %s\n", nilaiAwal, statusAwal.c_str());
 
@@ -117,14 +124,15 @@ void loop() {
     Serial.printf("  Kondisi Aman    : %d\n", totalAman);
     Serial.printf("  Kondisi Bahaya  : %d\n", totalBahaya);
     Serial.println("====================================");
-    Serial.println("💤 Sistem berhenti. Restart ESP32 untuk sesi baru.");
+    Serial.println("💤 Sistem berhenti. Restart ESP8266 untuk sesi baru.");
 
     // Matikan LED
-    digitalWrite(LED_INDICATOR, LOW);
+    digitalWrite(LED_INDICATOR, HIGH); // LED ESP8266 active LOW
 
     // Berhenti total
     while (true) {
       delay(10000);
+      yield(); // Agar watchdog ESP8266 tidak reset
     }
   }
 
@@ -139,8 +147,8 @@ void loop() {
     firstRead = false;
     lastReadTime = currentTime;
 
-    // Baca nilai analog LDR (0 - 4095)
-    int nilaiLDR = analogRead(LDR_PIN);
+    // Baca nilai analog LDR (di-scale ke 0-4095)
+    int nilaiLDR = readLDR();
     totalBacaan++;
 
     // Klasifikasi kondisi cahaya
@@ -169,11 +177,11 @@ void loop() {
     Serial.printf("⏳ Sisa waktu: %d jam %d menit\n", jamSisa, menitSisa);
     Serial.printf("📊 Aman: %d | Bahaya: %d\n", totalAman, totalBahaya);
 
-    // Kontrol LED indikator
+    // Kontrol LED indikator (ESP8266 LED active LOW)
     if (bahaya) {
-      digitalWrite(LED_INDICATOR, HIGH);
+      digitalWrite(LED_INDICATOR, LOW);  // LED menyala
     } else {
-      digitalWrite(LED_INDICATOR, LOW);
+      digitalWrite(LED_INDICATOR, HIGH); // LED mati
     }
 
     // Edge detection: trigger Telegram hanya saat MASUK ke kondisi Gelap total
@@ -182,7 +190,8 @@ void loop() {
       // Baru saja masuk kondisi gelap total
       gelapTotalActive = true;
       triggerTelegram = true;
-      Serial.println("🚨 BAHAYA! Gelap total terdeteksi → Notifikasi Telegram!");
+      Serial.println("🚨 BAHAYA! Gelap total terdeteksi!");
+      Serial.println("📱 Telegram akan dikirim via GitHub Actions...");
     } else if (!bahaya && gelapTotalActive) {
       // Kembali dari gelap total ke kondisi lain
       gelapTotalActive = false;
@@ -191,19 +200,23 @@ void loop() {
 
     // Kirim data ke GitHub (setiap pembacaan)
     if (ENABLE_GITHUB_LOG) {
-      bool success = sendGitHubAlert(statusLabel, kondisi, nilaiLDR, triggerTelegram);
-      if (success) {
-        Serial.println("✅ Data berhasil dikirim ke GitHub!");
-        if (triggerTelegram) {
-          Serial.println("📱 Notifikasi Telegram akan segera muncul...");
-        }
-      } else {
-        Serial.println("❌ Gagal mengirim data ke GitHub!");
-      }
+      bool success = sendGitHubLog(statusLabel, kondisi, nilaiLDR, triggerTelegram);
+      Serial.println(success ? "✅ GitHub: Data tersimpan." : "❌ GitHub: Gagal simpan.");
     }
 
     Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   }
+
+  yield(); // Agar watchdog ESP8266 tidak reset
+}
+
+// ======================================================
+//          BACA SENSOR LDR (SCALE 10-BIT → 12-BIT)
+// ======================================================
+int readLDR() {
+  int rawADC = analogRead(LDR_PIN);  // ESP8266: 0-1023 (10-bit)
+  int scaledADC = map(rawADC, 0, 1023, 0, 4095); // Scale ke 0-4095
+  return scaledADC;
 }
 
 // ======================================================
@@ -254,12 +267,13 @@ void connectWiFi() {
   }
 }
 
+
 // ======================================================
 //          FUNGSI KIRIM DATA KE GITHUB API
 // ======================================================
-bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTelegram) {
+bool sendGitHubLog(String status, String kondisi, int nilaiLDR, bool triggerTelegram) {
   WiFiClientSecure client;
-  client.setInsecure();  // Skip SSL verification (untuk kemudahan)
+  client.setInsecure();  // Skip SSL verification
 
   HTTPClient http;
 
@@ -278,7 +292,7 @@ bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTe
   http.addHeader("Authorization", String("token ") + GITHUB_TOKEN);
   http.addHeader("Accept", "application/vnd.github.v3+json");
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("User-Agent", "ESP32-Device");
+  http.addHeader("User-Agent", "ESP8266-LDR-Sensor");
 
   // Dapatkan waktu sekarang
   String timestamp = getFormattedTime();
@@ -300,7 +314,7 @@ bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTe
   // Kirim POST request
   int httpCode = http.POST(payload);
 
-  Serial.printf("📬 HTTP Response Code: %d\n", httpCode);
+  Serial.printf("📬 GitHub Response: %d\n", httpCode);
 
   http.end();
 
