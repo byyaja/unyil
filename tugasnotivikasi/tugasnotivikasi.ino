@@ -1,6 +1,9 @@
 /*
  * =====================================================
- *  ESP32 + Sensor LDR + tELE + GitHub Log
+ *  ESP32 + Sensor LDR + GitHub Log + Telegram
+ *  Interval: 10 menit | Durasi: 12 jam
+ *  Klasifikasi: Gelap total, Remang-remang,
+ *               Cahaya terang, Cahaya sangat terang
  * =====================================================
  */
 
@@ -22,13 +25,31 @@ const char* GITHUB_REPO     = "unyil"; // Repository github
 // ============ KONFIGURASI SENSOR LDR ============
 #define LDR_PIN         34        // Pin analog untuk LDR (GPIO 34)
 #define LED_INDICATOR   2         // LED bawaan ESP32
-const int LDR_THRESHOLD = 2000;  // Ambang batas deteksi (sesuaikan!)
-                                   // > threshold = gelap/terhalang = anomali
-                                   // < threshold = normal/terang
 const char* SENSOR_LOCATION = "Lampu kamar";
 
-// ============ EDGE DETECTION (ANTI DOUBLE) ============
-bool anomaliActive = false;
+// Ambang batas berdasarkan jurnal LDR + kondisi remang-remang
+// Gelap total     : ADC >= 3763  -> BAHAYA
+// Remang-remang   : 2400 <= ADC < 3763 -> AMAN
+// Cahaya terang   : 1040 <= ADC < 2400 -> AMAN
+// Cahaya sangat terang : ADC < 1040 -> AMAN
+const int BATAS_GELAP_TOTAL   = 3763;
+const int BATAS_REMANG        = 2400;
+const int BATAS_CAHAYA_TERANG = 1040;
+
+// ============ INTERVAL & DURASI ============
+const unsigned long INTERVAL_BACA   = 600000;  // 10 menit (600.000 ms)
+const unsigned long DURASI_TOTAL    = 43200000; // 12 jam (43.200.000 ms)
+unsigned long lastReadTime   = 0;
+unsigned long startTime      = 0;
+bool firstRead               = true; // Agar pembacaan pertama langsung jalan
+
+// ============ EDGE DETECTION (ANTI SPAM TELEGRAM) ============
+bool gelapTotalActive = false;  // Track apakah sedang dalam kondisi gelap total
+
+// ============ COUNTER ============
+int totalBacaan   = 0;
+int totalAman     = 0;
+int totalBahaya   = 0;
 
 // ============ NTP TIME ============
 const char* ntpServer       = "pool.ntp.org";
@@ -37,8 +58,10 @@ const int   daylightOffset  = 0;
 
 // ============ DEKLARASI FUNGSI ============
 void connectWiFi();
-bool sendGitHubAlert(String status, int nilaiLDR);
+bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTelegram);
 String getFormattedTime();
+String klasifikasiCahaya(int nilaiLDR);
+bool isBahaya(int nilaiLDR);
 
 // ======================================================
 //                        SETUP
@@ -47,12 +70,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\n==========================================");
   Serial.println("  ESP32 Sensor LDR + GitHub + Telegram");
+  Serial.println("  Interval: 10 menit | Durasi: 12 jam");
   Serial.println("==========================================");
 
   // Setup pin
   pinMode(LED_INDICATOR, OUTPUT);
   digitalWrite(LED_INDICATOR, LOW);
-  // LDR di GPIO 34 tidak perlu pinMode (analog input default)
 
   // Koneksi WiFi
   connectWiFi();
@@ -64,56 +87,145 @@ void setup() {
 
   // Baca nilai awal LDR
   int nilaiAwal = analogRead(LDR_PIN);
-  Serial.printf("📊 Nilai LDR awal: %d (Threshold: %d)\n", nilaiAwal, LDR_THRESHOLD);
+  String statusAwal = klasifikasiCahaya(nilaiAwal);
+  Serial.printf("📊 Nilai LDR awal: %d | Kondisi: %s\n", nilaiAwal, statusAwal.c_str());
 
-  Serial.println("✅ Sistem siap! Menunggu anomali cahaya...\n");
+  // Catat waktu mulai
+  startTime = millis();
+
+  Serial.println("✅ Sistem siap! Pembacaan setiap 10 menit selama 12 jam.\n");
+  Serial.println("╔══════════════════════════════════════════╗");
+  Serial.println("║  PARAMETER SENSOR (JURNAL LDR)          ║");
+  Serial.println("╠══════════════════════════════════════════╣");
+  Serial.println("║  ADC >= 3763 : Gelap total    (BAHAYA)  ║");
+  Serial.println("║  ADC >= 2400 : Remang-remang  (AMAN)    ║");
+  Serial.println("║  ADC >= 1040 : Cahaya terang  (AMAN)    ║");
+  Serial.println("║  ADC <  1040 : Cahaya sangat  (AMAN)    ║");
+  Serial.println("║               terang                    ║");
+  Serial.println("╚══════════════════════════════════════════╝\n");
 }
 
 // ======================================================
 //                      LOOP UTAMA
 // ======================================================
 void loop() {
+  // Cek apakah sudah melewati durasi 12 jam
+  if (millis() - startTime >= DURASI_TOTAL) {
+    Serial.println("\n⏱️ ====================================");
+    Serial.println("  DURASI 12 JAM SELESAI!");
+    Serial.printf("  Total pembacaan : %d\n", totalBacaan);
+    Serial.printf("  Kondisi Aman    : %d\n", totalAman);
+    Serial.printf("  Kondisi Bahaya  : %d\n", totalBahaya);
+    Serial.println("====================================");
+    Serial.println("💤 Sistem berhenti. Restart ESP32 untuk sesi baru.");
+
+    // Matikan LED
+    digitalWrite(LED_INDICATOR, LOW);
+
+    // Berhenti total
+    while (true) {
+      delay(10000);
+    }
+  }
+
   // Pastikan WiFi tetap terhubung
   if (WiFi.status() != WL_CONNECTED) {
     connectWiFi();
   }
 
-  // Baca nilai analog LDR (0 - 4095)
-  int nilaiLDR = analogRead(LDR_PIN);
+  // Cek apakah sudah waktunya membaca sensor (non-blocking 10 menit)
+  unsigned long currentTime = millis();
+  if (firstRead || (currentTime - lastReadTime >= INTERVAL_BACA)) {
+    firstRead = false;
+    lastReadTime = currentTime;
 
-  // Tampilkan nilai LDR di Serial Monitor
-  Serial.printf("💡 LDR: %d | Threshold: %d | Status: %s\n",
-    nilaiLDR, LDR_THRESHOLD,
-    nilaiLDR > LDR_THRESHOLD ? "⚠️ ANOMALI" : "✅ NORMAL");
+    // Baca nilai analog LDR (0 - 4095)
+    int nilaiLDR = analogRead(LDR_PIN);
+    totalBacaan++;
 
-  // DETEKSI: Nilai LDR melewati threshold (gelap/terhalang)
-  if (nilaiLDR > LDR_THRESHOLD && !anomaliActive) {
-    // Anomali BARU terdeteksi (edge detection)
-    anomaliActive = true;
-    Serial.println("\n🚨 ANOMALI CAHAYA TERDETEKSI!");
+    // Klasifikasi kondisi cahaya
+    String kondisi = klasifikasiCahaya(nilaiLDR);
+    bool bahaya = isBahaya(nilaiLDR);
+    String statusLabel = bahaya ? "BAHAYA" : "AMAN";
 
-    // Nyalakan LED indikator
-    digitalWrite(LED_INDICATOR, HIGH);
-
-    // Kirim alert ke GitHub → Telegram
-    bool success = sendGitHubAlert("TERDETEKSI", nilaiLDR);
-
-    if (success) {
-      Serial.println("✅ Alert berhasil dikirim ke GitHub!");
-      Serial.println("📱 Notifikasi Telegram akan segera muncul...\n");
+    // Update counter
+    if (bahaya) {
+      totalBahaya++;
     } else {
-      Serial.println("❌ Gagal mengirim alert!\n");
+      totalAman++;
     }
-  }
 
-  // Anomali selesai (cahaya kembali normal)
-  if (nilaiLDR <= LDR_THRESHOLD && anomaliActive) {
-    anomaliActive = false;
-    digitalWrite(LED_INDICATOR, LOW);
-    Serial.println("✅ Cahaya kembali normal. Sensor siap.\n");
-  }
+    // Hitung sisa waktu
+    unsigned long elapsed = currentTime - startTime;
+    unsigned long remaining = DURASI_TOTAL - elapsed;
+    int jamSisa = remaining / 3600000;
+    int menitSisa = (remaining % 3600000) / 60000;
 
-  delay(500);  // Baca sensor setiap 0.5 detik
+    // Tampilkan di Serial Monitor
+    Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    Serial.printf("📖 Pembacaan ke-%d\n", totalBacaan);
+    Serial.printf("💡 LDR: %d | Kondisi: %s | Status: %s\n",
+      nilaiLDR, kondisi.c_str(), statusLabel.c_str());
+    Serial.printf("⏳ Sisa waktu: %d jam %d menit\n", jamSisa, menitSisa);
+    Serial.printf("📊 Aman: %d | Bahaya: %d\n", totalAman, totalBahaya);
+
+    // Kontrol LED indikator
+    if (bahaya) {
+      digitalWrite(LED_INDICATOR, HIGH);
+    } else {
+      digitalWrite(LED_INDICATOR, LOW);
+    }
+
+    // Edge detection: trigger Telegram hanya saat MASUK ke kondisi Gelap total
+    bool triggerTelegram = false;
+    if (bahaya && !gelapTotalActive) {
+      // Baru saja masuk kondisi gelap total
+      gelapTotalActive = true;
+      triggerTelegram = true;
+      Serial.println("🚨 BAHAYA! Gelap total terdeteksi → Notifikasi Telegram!");
+    } else if (!bahaya && gelapTotalActive) {
+      // Kembali dari gelap total ke kondisi lain
+      gelapTotalActive = false;
+      Serial.println("✅ Cahaya kembali normal dari gelap total.");
+    }
+
+    // Kirim data ke GitHub (setiap pembacaan)
+    if (ENABLE_GITHUB_LOG) {
+      bool success = sendGitHubAlert(statusLabel, kondisi, nilaiLDR, triggerTelegram);
+      if (success) {
+        Serial.println("✅ Data berhasil dikirim ke GitHub!");
+        if (triggerTelegram) {
+          Serial.println("📱 Notifikasi Telegram akan segera muncul...");
+        }
+      } else {
+        Serial.println("❌ Gagal mengirim data ke GitHub!");
+      }
+    }
+
+    Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  }
+}
+
+// ======================================================
+//          KLASIFIKASI KONDISI CAHAYA
+// ======================================================
+String klasifikasiCahaya(int nilaiLDR) {
+  if (nilaiLDR >= BATAS_GELAP_TOTAL) {
+    return "Gelap total";
+  } else if (nilaiLDR >= BATAS_REMANG) {
+    return "Remang-remang";
+  } else if (nilaiLDR >= BATAS_CAHAYA_TERANG) {
+    return "Cahaya terang";
+  } else {
+    return "Cahaya sangat terang";
+  }
+}
+
+// ======================================================
+//          CEK APAKAH KONDISI BAHAYA
+// ======================================================
+bool isBahaya(int nilaiLDR) {
+  return nilaiLDR >= BATAS_GELAP_TOTAL;
 }
 
 // ======================================================
@@ -143,9 +255,9 @@ void connectWiFi() {
 }
 
 // ======================================================
-//          FUNGSI KIRIM ALERT KE GITHUB API
+//          FUNGSI KIRIM DATA KE GITHUB API
 // ======================================================
-bool sendGitHubAlert(String status, int nilaiLDR) {
+bool sendGitHubAlert(String status, String kondisi, int nilaiLDR, bool triggerTelegram) {
   WiFiClientSecure client;
   client.setInsecure();  // Skip SSL verification (untuk kemudahan)
 
@@ -162,24 +274,27 @@ bool sendGitHubAlert(String status, int nilaiLDR) {
 
   http.begin(client, url);
 
-   // Headers
+  // Headers
   http.addHeader("Authorization", String("token ") + GITHUB_TOKEN);
   http.addHeader("Accept", "application/vnd.github.v3+json");
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("User-Agent", "ESP32-Device"); // Tambahan: User-Agent wajib untuk GitHub API
+  http.addHeader("User-Agent", "ESP32-Device");
 
   // Dapatkan waktu sekarang
   String timestamp = getFormattedTime();
 
-  // Body JSON (event_type diubah menjadi "sensor_update")
+  // Body JSON
   String payload = "{";
-  payload += "\"event_type\":\"sensor_update\","; // Diubah dari "sensor-alert" ke "sensor_update"
+  payload += "\"event_type\":\"sensor_update\",";
   payload += "\"client_payload\":{";
   payload += "\"status\":\"" + status + "\",";
+  payload += "\"kondisi\":\"" + kondisi + "\",";
   payload += "\"location\":\"" + String(SENSOR_LOCATION) + "\",";
   payload += "\"timestamp\":\"" + timestamp + "\",";
-  payload += "\"ldr_value\":\"" + String(nilaiLDR) + "\"";
+  payload += "\"ldr_value\":\"" + String(nilaiLDR) + "\",";
+  payload += "\"trigger_telegram\":\"" + String(triggerTelegram ? "true" : "false") + "\"";
   payload += "}}";
+
   Serial.println("📦 Payload: " + payload);
 
   // Kirim POST request
