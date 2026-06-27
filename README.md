@@ -7,12 +7,12 @@
 
 | Item | Detail |
 |------|--------|
-| 🔔 Status | **AMAN** |
-| 💡 Kondisi | **Remang-remang** |
+| 🔔 Status | **BAHAYA** |
+| 💡 Kondisi | **Gelap total** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | 2026-06-28 05:07:33 WIB |
-| 📈 Nilai LDR | 3394 |
-| 📁 Total Log | 75 data |
+| 🕐 Waktu | 2026-06-28 05:17:33 WIB |
+| 📈 Nilai LDR | 4095 |
+| 📁 Total Log | 76 data |
 
 ## 📂 File Log
 
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada 2026-06-28 05:07:33 WIB*
+*Diperbarui otomatis pada 2026-06-28 05:17:33 WIB*
