@@ -1,4 +1,4 @@
-name: Log Sensor ESP32
+name: Log Sensor LDR
 
 on:
   repository_dispatch:
@@ -40,15 +40,18 @@ jobs:
           # Pastikan direktori logs ada
           mkdir -p logs
 
-          # Buat header CSV jika file belum ada
-          if [ ! -f logs/sensor_log.csv ]; then
-            echo "Tanggal_Waktu,Status,Kondisi,Lokasi,Nilai_LDR" > logs/sensor_log.csv
+          # Buat file CSV baru dengan header yang benar jika belum ada atau format lama
+          HEADER="Tanggal_Waktu,Status,Kondisi,Lokasi,Nilai_LDR"
+          if [ ! -f logs/sensor_log.csv ] || ! head -1 logs/sensor_log.csv | grep -q "Kondisi"; then
+            echo "$HEADER" > logs/sensor_log.csv
+            echo "📋 File CSV baru dibuat dengan format terbaru"
           fi
 
           # Tambahkan data baru ke CSV
           echo "${TIMESTAMP},${STATUS},${KONDISI},${LOCATION},${LDR_VALUE}" >> logs/sensor_log.csv
 
-          echo "✅ Data berhasil ditambahkan ke CSV"
+          TOTAL_LOG=$(tail -n +2 logs/sensor_log.csv | wc -l)
+          echo "✅ Data berhasil ditambahkan ke CSV (Total: ${TOTAL_LOG} data)"
           echo "📊 Status: ${STATUS} | Kondisi: ${KONDISI} | LDR: ${LDR_VALUE}"
 
       - name: 📊 Update README
@@ -58,41 +61,45 @@ jobs:
           LOCATION="${{ github.event.client_payload.location || 'Lampu kamar' }}"
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Manual Test' }}"
           LDR_VALUE="${{ github.event.client_payload.ldr_value || github.event.inputs.ldr_value || '0' }}"
-          TOTAL_LOG=$(wc -l < logs/sensor_log.csv)
-          TOTAL_LOG=$((TOTAL_LOG - 1))  # Kurangi header
+          TOTAL_LOG=$(tail -n +2 logs/sensor_log.csv | wc -l)
 
-          cat > README.md << EOF
-          # 📡 ESP32 Sensor LDR - Monitor Cahaya
+          cat > README.md << 'HEREDOC_END'
+          # 📡 ESP8266 Sensor LDR - Monitor Cahaya
 
-          > Sistem monitoring intensitas cahaya menggunakan ESP32 + Sensor LDR
+          > Sistem monitoring intensitas cahaya menggunakan ESP8266 + Sensor LDR
           > Notifikasi via Telegram | Data tersimpan di GitHub | Dashboard Interaktif
 
           ## 📊 Status Terakhir
 
           | Item | Detail |
           |------|--------|
-          | 🔔 Status | **${STATUS}** |
-          | 💡 Kondisi | **${KONDISI}** |
-          | 📍 Lokasi | ${LOCATION} |
-          | 🕐 Waktu | ${TIMESTAMP} |
-          | 📈 Nilai LDR | ${LDR_VALUE} |
-          | 📁 Total Log | ${TOTAL_LOG} data |
+          HEREDOC_END
+
+          # Tambahkan baris dinamis
+          echo "| 🔔 Status | **${STATUS}** |" >> README.md
+          echo "| 💡 Kondisi | **${KONDISI}** |" >> README.md
+          echo "| 📍 Lokasi | ${LOCATION} |" >> README.md
+          echo "| 🕐 Waktu | ${TIMESTAMP} |" >> README.md
+          echo "| 📈 Nilai LDR | ${LDR_VALUE} |" >> README.md
+          echo "| 📁 Total Log | ${TOTAL_LOG} data |" >> README.md
+
+          cat >> README.md << 'HEREDOC_END'
 
           ## 📂 File Log
 
-          Data lengkap di [\`logs/sensor_log.csv\`](logs/sensor_log.csv)
+          Data lengkap di [`logs/sensor_log.csv`](logs/sensor_log.csv)
 
           ## 🌐 Dashboard
 
-          Buka [\`index.html\`](index.html) untuk melihat dashboard interaktif
+          Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 
           ## 🏗️ Arsitektur
 
-          \`\`\`
-          [Sensor LDR] → [ESP32] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
-                                                                   → [Log CSV]
-                                                                   → [Dashboard]
-          \`\`\`
+          ```
+          [Sensor LDR] → [ESP8266] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
+                                                                      → [Log CSV]
+                                                                      → [Dashboard]
+          ```
 
           ## 📋 Parameter Sensor (Jurnal LDR)
 
@@ -104,8 +111,9 @@ jobs:
           | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
           ---
-          *Diperbarui otomatis pada ${TIMESTAMP}*
-          EOF
+          HEREDOC_END
+
+          echo "*Diperbarui otomatis pada ${TIMESTAMP}*" >> README.md
 
       - name: 💾 Commit & Push Data
         run: |
@@ -125,7 +133,8 @@ jobs:
           TIMESTAMP="${{ github.event.client_payload.timestamp || 'Unknown' }}"
           LDR_VALUE="${{ github.event.client_payload.ldr_value || '0' }}"
 
-          MESSAGE="🚨 <b>BAHAYA - GELAP TOTAL!</b>
+          MESSAGE=$(cat << EOF
+          🚨 <b>BAHAYA - GELAP TOTAL!</b>
           ━━━━━━━━━━━━━━━━━━━━
           📡 Status: ${STATUS}
           💡 Kondisi: ${KONDISI}
@@ -134,7 +143,9 @@ jobs:
           📈 Nilai LDR: ${LDR_VALUE}
           ━━━━━━━━━━━━━━━━━━━━
           ⚠️ Intensitas cahaya sangat rendah!
-          Segera cek lokasi sensor!"
+          Segera cek lokasi sensor!
+          EOF
+          )
 
           # Membuat JSON secara aman menggunakan jq
           JSON_PAYLOAD=$(jq -n \
@@ -144,8 +155,20 @@ jobs:
             '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
 
           echo "📱 Mengirim notifikasi Telegram (BAHAYA)..."
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "$JSON_PAYLOAD"
+            -d "$JSON_PAYLOAD")
 
-          echo "✅ Notifikasi Telegram terkirim!"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "📬 HTTP Response: ${HTTP_CODE}"
+          echo "📦 Body: ${BODY}"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Notifikasi Telegram berhasil terkirim!"
+          else
+            echo "❌ Gagal mengirim notifikasi Telegram!"
+            exit 1
+          fi
