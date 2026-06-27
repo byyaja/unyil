@@ -10,12 +10,12 @@
 #include <time.h>
 
 // ============ KONFIGURASI WiFi ============
-const char* WIFI_SSID      = "Byy"; //SSID WiFi
-const char* WIFI_PASSWORD   = "buyyyyyy"; //Password WIfi
+const char* WIFI_SSID      = "Home"; //SSID WiFi
+const char* WIFI_PASSWORD   = ""; //Password WIfi
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG  = true;
-const char* GITHUB_TOKEN    = "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"; // Token Github
+const char* GITHUB_TOKEN    = ""; // Token Github
 const char* GITHUB_OWNER    = "byyaja"; // Username Github
 const char* GITHUB_REPO     = "unyil"; // Repository github
 
