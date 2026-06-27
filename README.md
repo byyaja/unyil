@@ -1,6 +1,6 @@
-# 📡 ESP32 Sensor LDR - Monitor Cahaya
+# 📡 ESP8266 Sensor LDR - Monitor Cahaya
 
-> Sistem monitoring intensitas cahaya menggunakan ESP32 + Sensor LDR
+> Sistem monitoring intensitas cahaya menggunakan ESP8266 + Sensor LDR
 > Notifikasi via Telegram | Data tersimpan di GitHub | Dashboard Interaktif
 
 ## 📊 Status Terakhir
@@ -10,9 +10,9 @@
 | 🔔 Status | **AMAN** |
 | 💡 Kondisi | **Remang-remang** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | 2026-06-27 16:06:41 WIB |
-| 📈 Nilai LDR | 3735 |
-| 📁 Total Log | 33 data |
+| 🕐 Waktu | 2026-06-27 16:15:11 WIB |
+| 📈 Nilai LDR | 3639 |
+| 📁 Total Log | 1 data |
 
 ## 📂 File Log
 
@@ -25,9 +25,9 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 ## 🏗️ Arsitektur
 
 ```
-[Sensor LDR] → [ESP32] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
-                                                         → [Log CSV]
-                                                         → [Dashboard]
+[Sensor LDR] → [ESP8266] → [GitHub API] → [GitHub Actions] → [Telegram Bot]
+                                                            → [Log CSV]
+                                                            → [Dashboard]
 ```
 
 ## 📋 Parameter Sensor (Jurnal LDR)
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada 2026-06-27 16:06:41 WIB*
+*Diperbarui otomatis pada 2026-06-27 16:15:11 WIB*
