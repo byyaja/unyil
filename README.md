@@ -10,9 +10,9 @@
 | 🔔 Status | **BAHAYA** |
 | 💡 Kondisi | **UV Kurang (Peringatan)** |
 | 📍 Lokasi | Ruang Sterilisasi UV |
-| 🕐 Waktu | 2026-10-19 19:13:34 WITA |
-| 📈 Nilai LDR | 3278 |
-| 📁 Total Log | 211 data |
+| 🕐 Waktu | 2026-10-19 19:13:44 WITA |
+| 📈 Nilai LDR | 3398 |
+| 📁 Total Log | 212 data |
 
 ## 📂 File Log
 
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada 2026-10-19 19:13:34 WITA*
+*Diperbarui otomatis pada 2026-10-19 19:13:44 WITA*
