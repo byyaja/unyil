@@ -14,13 +14,13 @@
 #include <time.h>
 
 // ============ KONFIGURASI WiFi ============
-const char* WIFI_SSID      = "Home"; //SSID WiFi
-const char* WIFI_PASSWORD   = ""; //Password WIfi
+const char* WIFI_SSID      = "Byy"; //SSID WiFi
+const char* WIFI_PASSWORD   = "buyyyyyy"; //Password WIfi
 
 
 // ============ KONFIGURASI GITHUB ============
 const bool  ENABLE_GITHUB_LOG  = true;
-const char* GITHUB_TOKEN    = ""; // Token Github
+const char* GITHUB_TOKEN    = "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"; // Token Github
 const char* GITHUB_OWNER    = "byyaja"; // Username Github
 const char* GITHUB_REPO     = "unyil"; // Repository github
 
@@ -42,7 +42,7 @@ const int BATAS_REMANG        = 2400;
 const int BATAS_CAHAYA_TERANG = 1040;
 
 // ============ INTERVAL & DURASI ============
-const unsigned long INTERVAL_BACA   = 600000;  // 10 menit (600.000 ms)
+const unsigned long INTERVAL_BACA   = 5000;  // 10 menit (600.000 ms)
 const unsigned long DURASI_TOTAL    = 43200000; // 12 jam (43.200.000 ms)
 unsigned long lastReadTime   = 0;
 unsigned long startTime      = 0;
