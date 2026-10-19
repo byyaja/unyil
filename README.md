@@ -8,11 +8,11 @@
 | Item | Detail |
 |------|--------|
 | 🔔 Status | **BAHAYA** |
-| 💡 Kondisi | **Gelap total** |
-| 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | 2026-10-19 18:59:20 WIB |
-| 📈 Nilai LDR | 4099 |
-| 📁 Total Log | 209 data |
+| 💡 Kondisi | **UV Sangat Kurang** |
+| 📍 Lokasi | Ruang Sterilisasi UV |
+| 🕐 Waktu | 2026-10-19 19:13:24 WITA |
+| 📈 Nilai LDR | 3775 |
+| 📁 Total Log | 210 data |
 
 ## 📂 File Log
 
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada 2026-10-19 18:59:20 WIB*
+*Diperbarui otomatis pada 2026-10-19 19:13:24 WITA*
