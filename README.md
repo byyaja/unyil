@@ -11,8 +11,8 @@
 | 💡 Kondisi | **Gelap total** |
 | 📍 Lokasi | Lampu kamar |
 | 🕐 Waktu | Waktu tidak tersedia |
-| 📈 Nilai LDR | 4099 |
-| 📁 Total Log | 168 data |
+| 📈 Nilai LDR | 3855 |
+| 📁 Total Log | 169 data |
 
 ## 📂 File Log
 
