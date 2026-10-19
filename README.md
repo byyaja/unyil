@@ -10,9 +10,9 @@
 | 🔔 Status | **BAHAYA** |
 | 💡 Kondisi | **Gelap total** |
 | 📍 Lokasi | Lampu kamar |
-| 🕐 Waktu | Waktu tidak tersedia |
-| 📈 Nilai LDR | 4027 |
-| 📁 Total Log | 170 data |
+| 🕐 Waktu | 2026-10-19 18:52:57 WIB |
+| 📈 Nilai LDR | 4099 |
+| 📁 Total Log | 171 data |
 
 ## 📂 File Log
 
@@ -40,4 +40,4 @@ Buka [`index.html`](index.html) untuk melihat dashboard interaktif
 | 4 | Cahaya sangat terang | < 1040 | 🟢 AMAN | Paparan cahaya tinggi |
 
 ---
-*Diperbarui otomatis pada Waktu tidak tersedia*
+*Diperbarui otomatis pada 2026-10-19 18:52:57 WIB*
