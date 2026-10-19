@@ -12,7 +12,7 @@
 | 📍 Lokasi | Lampu kamar |
 | 🕐 Waktu | Waktu tidak tersedia |
 | 📈 Nilai LDR | 4099 |
-| 📁 Total Log | 167 data |
+| 📁 Total Log | 168 data |
 
 ## 📂 File Log
 
